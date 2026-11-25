@@ -1,0 +1,43 @@
+# PostgreSQL 17.
+#
+# dev/test: Postgres from the repo's docker-compose.yml (`docker compose up -d db`),
+#           reachable on localhost:5433. Override with DB_HOST / DB_PORT / DB_USER / DB_PASSWORD.
+# production (staging + prod): the Postgres Kamal accessory on the same VM, reached by
+#           container name over the Kamal Docker network (see docs/spec/infrastructure.md).
+#
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("DB_HOST") { "localhost" } %>
+  port: <%= ENV.fetch("DB_PORT") { 5433 } %>
+  username: <%= ENV.fetch("DB_USER") { "postgres" } %>
+  password: <%= ENV.fetch("DB_PASSWORD") { "postgres" } %>
+
+development:
+  <<: *default
+  database: url_shortener_development
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+# Do not set this db to the same as development or production.
+test:
+  <<: *default
+  database: url_shortener_test
+
+production:
+  primary: &primary_production
+    <<: *default
+    host: <%= ENV.fetch("DB_HOST") { "url-shortener-db" } %>
+    port: <%= ENV.fetch("DB_PORT") { 5432 } %>
+    username: <%= ENV.fetch("DB_USER") { "url_shortener" } %>
+    password: <%= ENV["POSTGRES_PASSWORD"] %>
+    database: url_shortener_production
+  cache:
+    <<: *primary_production
+    database: url_shortener_production_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_production
+    database: url_shortener_production_queue
+    migrations_paths: db/queue_migrate
