@@ -28,10 +28,10 @@ Portfolio project: a Bitly-style URL shortener.
 ## Architecture
 
 ```
-Browser ──► Next.js on Vercel (<app>.vercel.app)
+Browser ──► Next.js on Vercel (console.cellow.space)
               │  /api/* rewritten (proxied) ──────────────┐
               ▼                                           ▼
-Visitor ──► GET <short>.duckdns.org/:code ──► kamal-proxy ──► Rails 8 API (Oracle A1 VM, Docker)
+Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rails 8 API (Oracle A1 VM, Docker)
                                                            │   302 + enqueue ClickJob
                                          Solid Queue ──────┼──► PostHog capture (link_clicked)
                                          Stats request ────┼──► PostHog Query API (HogQL), cached 60s
@@ -39,7 +39,7 @@ Visitor ──► GET <short>.duckdns.org/:code ──► kamal-proxy ──► 
                                                            └──► Postgres 17 (Kamal accessory, same VM)
 ```
 
-Everything runs on free tiers: Vercel Hobby, Oracle Cloud Always Free (VM + Object Storage), PostHog Free, DuckDNS and GitHub Actions.
+Everything runs on free tiers: Vercel Hobby, Oracle Cloud Always Free (VM + Object Storage), PostHog Free, Cloudflare DNS Free and GitHub Actions. The one paid item is the `cellow.space` domain (yearly renewal).
 
 Repo layout (monorepo):
 
@@ -51,7 +51,7 @@ Repo layout (monorepo):
 release-please-config.json, .release-please-manifest.json, version.txt, CHANGELOG.md
 ```
 
-Rails serves the short domain directly, so redirects never go through Next.js. The frontend reaches Rails only through Next.js rewrites (`/api/:path*` → `https://<short>.duckdns.org/api/:path*`). That means the browser only ever talks to `<app>.vercel.app`. The Rails session cookie is first-party there (`SameSite=Lax`, `Secure`, no `Domain` attribute), and no CORS setup is needed. This works without a custom domain, even though `vercel.app` and `duckdns.org` are separate sites.
+Rails serves the short domain directly, so redirects never go through Next.js. The frontend reaches Rails only through Next.js rewrites (`/api/:path*` → `https://go.cellow.space/api/:path*`). That means the browser only ever talks to `console.cellow.space`. The Rails session cookie is first-party there (`SameSite=Lax`, `Secure`, no `Domain` attribute, so it's host-only and never sent to `go.cellow.space` directly), and no CORS setup is needed.
 
 ## Build order
 
@@ -68,27 +68,27 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
       - an Oracle API signing key
       - a Pulumi Cloud account
       - a Tailscale tailnet with `tag:server` / `tag:ci` ACLs and an OAuth client
-      - DuckDNS subdomains (`<short>`, `<short>-staging`)
-      - a Vercel project linked to `/web`
+      - the `cellow.space` domain on Cloudflare DNS (nameservers pointed at Cloudflare), plus a Cloudflare API token that can only edit that zone's DNS
+      - a Vercel project linked to `/web`, with `console.cellow.space` and `console-staging.cellow.space` added as domains
       - the release-please GitHub App
       Done when: every value in [config](docs/spec/config.md) for staging has a home (Pulumi config or GitHub `staging` environment secrets).
-   6. **Pulumi `staging` stack:** compartment, network, security list (80/443 only), A1 VM with cloud-init, DuckDNS update.
-      Done when: `ssh deploy@url-shortener-staging` works over Tailscale, `docker ps` runs, and `<short>-staging.duckdns.org` resolves to the VM.
+   6. **Pulumi `staging` stack:** compartment, network, security list (80/443 only), A1 VM with cloud-init, Cloudflare DNS records.
+      Done when: `ssh deploy@url-shortener-staging` works over Tailscale, `docker ps` runs, and `go-staging.cellow.space` resolves to the VM.
    7. **First Kamal deploy from your laptop:** `deploy.yml` + the `staging` destination, Postgres accessory, Let's Encrypt TLS.
-      Done when: `https://<short>-staging.duckdns.org/up` returns 200 with a valid certificate.
-   8. **Vercel staging:** `vercel.json` (automatic deploys from `main` off), `API_ORIGIN` for the Preview environment, then a manual `vercel deploy` + `vercel alias` to `<app>-staging.vercel.app`.
+      Done when: `https://go-staging.cellow.space/up` returns 200 with a valid certificate.
+   8. **Vercel staging:** `vercel.json` (automatic deploys from `main` off), `API_ORIGIN` for the Preview environment, then a manual `vercel deploy` + `vercel alias` to `console-staging.cellow.space`.
       Done when: the staging page shows the version coming from the staging API through the rewrite.
    9. **Automate it:** in `pipeline.yml`, the build (arm64 runner → GHCR, tagged with the commit hash), staging deploy (Tailscale → `kamal deploy -d staging`, Vercel CLI deploy + alias) and smoke test jobs.
       Done when: merging a PR to `main` updates staging on its own, and `/up` reports the new commit hash.
 2. **Production and the release flow.** The hello-world build goes all the way to production, so the whole pipeline is proven before any features exist:
-   1. **Pulumi `prod` stack:** VM (1 OCPU / 6 GB), backup bucket with the 14-day lifecycle rule, the IAM policy that lets the lifecycle rule run, the `backup-bot` user + S3-style key, and the prod DuckDNS update.
-      Done when: `ssh deploy@url-shortener-prod` works over Tailscale, `<short>.duckdns.org` resolves, and the bucket shows the lifecycle rule.
+   1. **Pulumi `prod` stack:** VM (1 OCPU / 6 GB), backup bucket with the 14-day lifecycle rule, the IAM policy that lets the lifecycle rule run, the `backup-bot` user + S3-style key, and the prod DNS records.
+      Done when: `ssh deploy@url-shortener-prod` works over Tailscale, `go.cellow.space` resolves, and the bucket shows the lifecycle rule.
    2. **Production secrets:**
       - a GitHub `production` environment with you as required reviewer, deploys allowed only from `main`, and its secrets
       - Vercel Production env vars (`API_ORIGIN` pointing at the prod API)
       Done when: every value in [config](docs/spec/config.md) for production has a home.
    3. **First Kamal deploy to production, from your laptop:** `kamal setup -d production`.
-      Done when: `https://<short>.duckdns.org/up` returns 200 with a valid certificate.
+      Done when: `https://go.cellow.space/up` returns 200 with a valid certificate.
    4. **Backups:** the `backup` accessory (nightly `pg_dump` → Object Storage).
       Done when: a manual run puts a dump in the bucket, and `pg_restore` of that dump into a local database succeeds.
    5. **release-please:** config files, the manifest at `0.0.0`, `version.txt`, and the release-please job in `pipeline.yml`, using the GitHub App token.
@@ -96,7 +96,7 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
    6. **Production job:** runs only when a release is created, waits in the `production` environment for approval, then retags the image, runs `kamal deploy -d production`, `vercel deploy --prod` and the smoke test.
       Done when: the job is in `pipeline.yml` and skipped on normal merges. Its first real run happens in the next step.
    7. **First release:** merge the release PR → approve the production deploy.
-      Done when: tag `v0.1.0` and its GitHub Release exist, `<short>.duckdns.org/up` reports `0.1.0`, and `<app>.vercel.app` shows `v0.1.0` in the footer.
+      Done when: tag `v0.1.0` and its GitHub Release exist, `go.cellow.space/up` reports `0.1.0`, and `console.cellow.space` shows `v0.1.0` in the footer.
    8. **Rollback workflow:** `rollback.yml` (manual run with a tag as input).
       Done when: running it with `v0.1.0` redeploys that image to production and `/up` reports the same commit hash.
    9. **Monitoring:** UptimeRobot on staging and production `/up`, and Sentry projects for Rails and Next.js, tagged with release and environment.

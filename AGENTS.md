@@ -12,6 +12,7 @@ A Bitly-style URL shortener, built as a portfolio project. Everything must run o
 - **Hosting:**
   - Rails runs on an Oracle Cloud Always Free VM, deployed with Kamal.
   - Next.js runs on Vercel Hobby.
+  - DNS for `cellow.space` is on Cloudflare (free), managed by Pulumi: short links on `go.cellow.space`, the web app on `console.cellow.space`, with `-staging` variants.
   - The infrastructure is created with Pulumi (`infra/`).
 
 The design lives in `SPEC.md` (overview and build order) and `docs/spec/*.md` (details). Read the relevant doc before implementing anything. If the code and the spec disagree, stop and ask rather than silently picking one. When the user changes a decision, update the spec in the same PR.
@@ -62,7 +63,7 @@ Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brake
 
 ## Hard constraints (from the spec; do not violate)
 
-- **Free tiers only.** Don't add a paid service, a paid plan, or an Oracle resource outside Always Free.
+- **Free tiers only.** Don't add a paid service, a paid plan, or an Oracle resource outside Always Free. The one paid item is the `cellow.space` domain.
 - **The redirect path (`GET /:code`) never waits on a third party.** It does one indexed lookup and enqueues `ClickJob`. No PostHog or Safe Browsing call, no session, no write to the `links` row.
 - **No raw IP is stored or logged.** Visitors are identified by `SHA256(ip + user_agent + daily_salt)`.
 - **Rails owns all business logic and auth.** Next.js is the UI: no database access, no auth library.
