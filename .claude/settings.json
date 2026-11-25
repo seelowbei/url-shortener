@@ -82,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-secrets.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-secrets.mjs\" || { echo 'Blocked: the protect-secrets safety hook could not run (is node on PATH? try asdf reshim). Fix it, then retry.' >&2; exit 2; }",
             "timeout": 10
           }
         ]
@@ -92,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-main.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-main.mjs\" || { echo 'Blocked: the protect-main safety hook could not run (is node on PATH? try asdf reshim). Fix it, then retry.' >&2; exit 2; }",
             "timeout": 10
           }
         ]
