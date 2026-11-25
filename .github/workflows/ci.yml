@@ -1,4 +1,4 @@
-# Lint, test and build both apps. The `api` and `web` jobs are required checks on main.
+# Lint, test and build both apps, and type-check the Pulumi program. All jobs are required checks on main.
 name: CI
 
 on:
@@ -103,3 +103,33 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # Type-check only: CI never holds Oracle or Cloudflare credentials, and `pulumi up` is laptop-only.
+  infra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: infra/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: infra/.nvmrc
+          cache: pnpm
+          cache-dependency-path: infra/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prettier
+        run: pnpm format:check
+
+      - name: Typecheck
+        run: pnpm typecheck
