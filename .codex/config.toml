@@ -1,0 +1,10 @@
+# Codex project config. Loaded only when this project is trusted in Codex.
+# Project instructions live in AGENTS.md (Codex reads it automatically).
+# Safety hooks live in .codex/hooks.json (same scripts Claude Code uses).
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+# bundle install, pnpm install, docker pulls and gem audits need network.
+network_access = true

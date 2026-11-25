@@ -1,0 +1,29 @@
+{
+  "description": "url-shortener project hooks, the same scripts .claude/settings.json binds for Claude Code. protect-secrets.mjs runs on apply_patch (edits) and Bash (all shell tools); protect-main.mjs blocks git push to main on Bash.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|apply_patch|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/.claude/hooks/protect-secrets.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking protected files"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/.claude/hooks/protect-main.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking push target"
+          }
+        ]
+      }
+    ]
+  }
+}
