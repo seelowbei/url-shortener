@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(docker compose up:*)",
+      "Bash(docker compose down)",
+      "Bash(docker compose ps:*)",
+      "Bash(docker compose logs:*)",
+      "Bash(docker build:*)",
+      "Bash(bundle install:*)",
+      "Bash(bundle exec rspec:*)",
+      "Bash(bin/rspec:*)",
+      "Bash(bin/rubocop:*)",
+      "Bash(bin/brakeman:*)",
+      "Bash(bin/bundler-audit:*)",
+      "Bash(bin/rails db:prepare:*)",
+      "Bash(bin/rails db:migrate:*)",
+      "Bash(bin/rails db:rollback:*)",
+      "Bash(bin/rails generate:*)",
+      "Bash(bin/rails routes:*)",
+      "Bash(node --test:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr list:*)",
+      "Bash(pulumi preview:*)",
+      "Bash(pulumi stack ls:*)",
+      "Bash(pulumi stack output:*)",
+      "Bash(pulumi config get:*)"
+    ],
+    "deny": [
+      "Bash(*kamal setup*)",
+      "Bash(*kamal deploy*)",
+      "Bash(*kamal redeploy*)",
+      "Bash(*kamal rollback*)",
+      "Bash(*kamal app*)",
+      "Bash(*kamal accessory*)",
+      "Bash(*kamal proxy*)",
+      "Bash(*kamal remove*)",
+      "Bash(*kamal prune*)",
+      "Bash(*kamal server*)",
+      "Bash(*kamal lock*)",
+      "Bash(*kamal secrets print*)",
+      "Bash(*pulumi up*)",
+      "Bash(*pulumi destroy*)",
+      "Bash(*pulumi refresh*)",
+      "Bash(*pulumi import*)",
+      "Bash(*pulumi cancel*)",
+      "Bash(*pulumi state*)",
+      "Bash(*pulumi stack init*)",
+      "Bash(*pulumi stack rm*)",
+      "Bash(*pulumi config set*)",
+      "Bash(*pulumi config rm*)",
+      "Bash(*--show-secrets*)",
+      "Bash(*credentials:show*)",
+      "Bash(*credentials:edit*)",
+      "Read(./**/config/master.key)",
+      "Edit(./**/config/master.key)",
+      "Read(./**/config/credentials/*.key)",
+      "Edit(./**/config/credentials/*.key)",
+      "Read(./**/*.pem)",
+      "Edit(./**/*.pem)",
+      "Read(./**/.env)",
+      "Edit(./**/.env)",
+      "Read(./**/.env.local)",
+      "Edit(./**/.env.local)",
+      "Read(./**/.env.*.local)",
+      "Edit(./**/.env.*.local)",
+      "Read(./**/.env.development)",
+      "Edit(./**/.env.development)",
+      "Read(./**/.env.staging)",
+      "Edit(./**/.env.staging)",
+      "Read(./**/.env.production)",
+      "Edit(./**/.env.production)",
+      "Read(./**/.env.test)",
+      "Edit(./**/.env.test)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|MultiEdit|Write|NotebookEdit|Grep|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-secrets.mjs\" || { echo 'Blocked: the protect-secrets safety hook could not run (is node on PATH? try asdf reshim). Fix it, then retry.' >&2; exit 2; }",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-main.mjs\" || { echo 'Blocked: the protect-main safety hook could not run (is node on PATH? try asdf reshim). Fix it, then retry.' >&2; exit 2; }",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
