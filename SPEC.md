@@ -69,12 +69,12 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
       - a Pulumi Cloud account
       - a Tailscale tailnet with `tag:server` / `tag:ci` ACLs and an OAuth client
       - the `cellow.space` domain on Cloudflare DNS (nameservers pointed at Cloudflare), plus a Cloudflare API token that can only edit that zone's DNS
-      - a Vercel project linked to `/web`, with `console.cellow.space` and `console-staging.cellow.space` added as domains
-      - the release-please GitHub App
-      Done when: every value in [config](docs/spec/config.md) for staging has a home (Pulumi config or GitHub `staging` environment secrets).
-   6. **Pulumi `staging` stack:** compartment, network, security list (80/443 only), A1 VM with cloud-init, Cloudflare DNS records.
+      - a Vercel project linked to `/web`, with `console.cellow.space` and `console-staging.cellow.space` added as domains (`console-staging` is a Preview domain on the `staging` branch; see [Vercel](docs/spec/infrastructure.md#vercel))
+      - the release-please GitHub App, its ID and private key stored as repo secrets
+      Done when: every account above exists and its values have a home: GitHub `staging` environment or repo secrets, or saved for the Pulumi config in step 6. Generated deploy secrets come in steps 6 and 7. Keys for later features (PostHog, Safe Browsing, Sentry, Mission Control, `INTERNAL_TOKEN`) come in the build steps that use them.
+   6. **Pulumi `staging` stack:** compartment, network, security list (80/443 only), A1 VM with cloud-init, Cloudflare DNS records. A new deploy SSH key pair: the public key goes in the stack config, the private key in the GitHub `staging` secret `KAMAL_SSH_PRIVATE_KEY`.
       Done when: `ssh deploy@url-shortener-staging` works over Tailscale, `docker ps` runs, and `go-staging.cellow.space` resolves to the VM.
-   7. **First Kamal deploy from your laptop:** `deploy.yml` + the `staging` destination, Postgres accessory, Let's Encrypt TLS.
+   7. **First Kamal deploy from your laptop:** `deploy.yml` + the `staging` destination, Postgres accessory, Let's Encrypt TLS. `POSTGRES_PASSWORD`, `RAILS_MASTER_KEY` and a GHCR token (`KAMAL_REGISTRY_PASSWORD`) are generated here, referenced from `.kamal/secrets.staging`, and stored in the GitHub `staging` environment.
       Done when: `https://go-staging.cellow.space/up` returns 200 with a valid certificate.
    8. **Vercel staging:** `vercel.json` (automatic deploys from `main` off), `API_ORIGIN` for the Preview environment, then a manual `vercel deploy` + `vercel alias` to `console-staging.cellow.space`.
       Done when: the staging page shows the version coming from the staging API through the rewrite.

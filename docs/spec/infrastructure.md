@@ -107,6 +107,7 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 
 ### Vercel
 - Next.js on the Hobby plan, one Vercel project from `/web`, with the custom domains `console.cellow.space` (production) and `console-staging.cellow.space` (staging alias). Custom domains are free on Hobby.
+- Vercel only links a Preview domain to an existing Git branch, so `console-staging.cellow.space` is linked to a `staging` branch that **nobody pushes to**. The domain only moves when the pipeline runs `vercel alias`. Pushing to `staging` would hand the staging domain to that preview.
 - **The Git integration only builds PR previews.** `vercel.json` turns off automatic deploys from `main` (`"git": {"deploymentEnabled": {"main": false}}`). Staging and production web deploys run from GitHub Actions with the Vercel CLI, so the web app and the API always ship together ([environments and release flow](delivery.md#environments-and-release-flow)).
 - `API_ORIGIN` env var for the rewrites: the Vercel *Preview* environment points at the staging API, *Production* at the prod API.
 
