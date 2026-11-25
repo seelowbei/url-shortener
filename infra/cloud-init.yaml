@@ -1,0 +1,78 @@
+#cloud-config
+# Rendered by index.ts: the double-brace placeholders (hostname, sshPublicKey, tailscaleAuthKey) are replaced
+# before this is passed as user_data. Runs once, when the VM is created.
+
+package_update: true
+package_upgrade: true
+packages:
+  - unattended-upgrades
+  - ca-certificates
+  - curl
+
+swap:
+  filename: /swapfile
+  size: 2G
+
+# Created up front so the deploy user can join it before Docker is installed.
+groups:
+  - docker
+
+users:
+  - default
+  - name: deploy
+    groups: [docker]
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - "{{sshPublicKey}}"
+
+ssh_pwauth: false
+disable_root: true
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/60-url-shortener.conf
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+runcmd:
+  - systemctl restart ssh
+
+  # Oracle's Ubuntu image ends the INPUT chain with a REJECT rule. Accept 80/443 just before it,
+  # and save before Docker starts so its own rules aren't persisted.
+  - |
+    set -eu
+    line=$(iptables -L INPUT --line-numbers | awk '/REJECT/ { print $1; exit }')
+    iptables -I INPUT "${line:-1}" -p tcp -m multiport --dports 80,443 -m conntrack --ctstate NEW -j ACCEPT
+    netfilter-persistent save
+
+  # Docker Engine from Docker's apt repository (https://docs.docker.com/engine/install/ubuntu/).
+  - |
+    set -eu
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    chmod a+r /etc/apt/keyrings/docker.asc
+    . /etc/os-release
+    cat > /etc/apt/sources.list.d/docker.sources <<EOF
+    Types: deb
+    URIs: https://download.docker.com/linux/ubuntu
+    Suites: ${UBUNTU_CODENAME:-$VERSION_CODENAME}
+    Components: stable
+    Architectures: $(dpkg --print-architecture)
+    Signed-By: /etc/apt/keyrings/docker.asc
+    EOF
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    systemctl enable --now docker
+
+  # Tailscale (https://tailscale.com/kb/1031/install-linux). The auth key is single-use and
+  # pre-tagged tag:server, so it's worthless once this has run.
+  - |
+    set -eu
+    curl -fsSL https://tailscale.com/install.sh | sh
+    tailscale up --authkey='{{tailscaleAuthKey}}' --hostname='{{hostname}}'

@@ -1,0 +1,10 @@
+# Non-secret staging config. OCI credentials, sshPublicKey and the secrets are set with
+# `pulumi config set` (see infra/README.md); Pulumi Cloud encrypts the secret values.
+config:
+  url-shortener:ocpus: 1
+  url-shortener:memoryInGbs: 4
+  url-shortener:availabilityDomainIndex: 0
+  url-shortener:cloudflareZoneId: 3e7ed690a0d29cc55c20b1469a01c17b
+  url-shortener:shortHost: go-staging.cellow.space
+  url-shortener:appHost: console-staging.cellow.space
+  url-shortener:vercelCname: 4eae97432a16395d.vercel-dns-017.com
