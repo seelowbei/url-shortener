@@ -63,6 +63,7 @@ Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brake
 ## Conventions
 
 - **Branches and PRs:** branch off `main`, open a PR, squash-merge.
+- **Atomic commits:** never put all of a branch's changes in one big commit. Each commit is one logical change (a dependency, a config change, a feature plus its tests, a doc update), builds and passes tests on its own, and has a Conventional Commits message. Stage by file or hunk (`git add <paths>`, `git add -p`), never `git add -A` / `git commit -a` across unrelated changes. Squash-merge still collapses them on `main`; the atomic history is for review and bisecting within the PR.
 - **PR titles follow Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `ci:`, `refactor:`, `perf:`, optional scope such as `feat(api):`). The squash commit uses the PR title, and release-please builds versions and the changelog from it.
 - **Backend** (details in `docs/spec/backend.md`):
   - Domain rules live in models.
