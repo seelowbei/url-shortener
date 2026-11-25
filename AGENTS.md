@@ -16,7 +16,7 @@ A Bitly-style URL shortener, built as a portfolio project. Everything must run o
 
 The design lives in `SPEC.md` (overview and build order) and `docs/spec/*.md` (details). Read the relevant doc before implementing anything. If the code and the spec disagree, stop and ask rather than silently picking one. When the user changes a decision, update the spec in the same PR.
 
-**Status:** build steps 1.1 (repo and branch protection) and 1.2 (Rails skeleton) are done. Next is step 1.3 (Next.js skeleton). Do not start later build steps unless asked.
+**Status:** build steps 1.1 (repo and branch protection) 1.2 (Rails skeleton) and 1.3 (Next.js skeleton) are done. Next is step 1.4 (CI). Do not start later build steps unless asked.
 
 ## Layout
 
@@ -24,7 +24,7 @@ The design lives in `SPEC.md` (overview and build order) and `docs/spec/*.md` (d
 SPEC.md              overview, architecture, build order
 docs/spec/           product, api, backend, frontend, infrastructure, delivery, config
 api/                 Rails 8.1 API (+ Kamal config in api/config/deploy*.yml, api/.kamal/)
-web/                 Next.js app (build step 1.3)
+web/                 Next.js app (pnpm, Node 26; has its own AGENTS.md for Next.js docs)
 infra/               Pulumi TypeScript program (build step 1.6)
 docker-compose.yml   dev Postgres 17 on localhost:5433
 .claude/hooks/       agent safety hooks, shared by Claude Code and Codex
@@ -45,10 +45,19 @@ bin/bundler-audit check --update        # gem vulnerabilities
 bin/rails server                        # API on localhost:3000
 docker build --platform linux/arm64 -t url-shortener-api:local .   # production image (the VM is ARM64)
 
+cd web
+pnpm install
+pnpm dev                                # Next.js on localhost:3001; /api/* is rewritten to API_ORIGIN (default localhost:3000)
+pnpm lint                               # ESLint
+pnpm typecheck                          # route types + tsc --noEmit
+pnpm test                               # Vitest
+pnpm format:check                       # Prettier; `pnpm format` to fix
+pnpm build                              # production build
+
 node --test ".claude/hooks/*.test.mjs"  # hook tests (from the repo root)
 ```
 
-Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brakeman`.
+Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brakeman`. Before calling a web change done, run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check`.
 
 ## Hard constraints (from the spec; do not violate)
 
