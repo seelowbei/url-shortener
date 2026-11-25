@@ -9,7 +9,7 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `DATABASE_URL` (`postgres://…@url-shortener-db:5432/…`, Docker network only) | api |
 | `POSTGRES_PASSWORD` | api (Kamal secret, shared by the accessory and the app) |
 | `OCI_BUCKET`, OCI S3-compatible access keys | backup container |
-| `SHORT_HOST` (`<short>.duckdns.org`), `APP_ORIGIN` (`https://<app>.vercel.app`) | api |
+| `SHORT_HOST` (`go.cellow.space`; staging `go-staging.cellow.space`), `APP_ORIGIN` (`https://console.cellow.space`; staging `https://console-staging.cellow.space`) | api |
 | `RAILS_MASTER_KEY`, `KAMAL_REGISTRY_PASSWORD` | api (Kamal secrets / GitHub Actions secrets) |
 | `INTERNAL_TOKEN` | api + GitHub Actions (for scheduled maintenance calls) |
 | `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST` | api (capture) |
@@ -24,7 +24,8 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `NEXT_PUBLIC_APP_ENV` (`development`/`staging`/`production`), `NEXT_PUBLIC_APP_VERSION` | web |
 | `NEXT_PUBLIC_SHORT_HOST` (display only, e.g. the domain hint in the alias input) | web |
 | `oci:tenancyOcid`, `oci:userOcid`, `oci:fingerprint`, `oci:privateKey`, `oci:region` | infra (Pulumi config, private key as secret; local only, not in CI) |
-| `tailscaleAuthKey`, `duckdnsToken`, `duckdnsDomain` | infra (Pulumi config secrets) |
+| `tailscaleAuthKey`, `cloudflare:apiToken` | infra (Pulumi config secrets) |
+| `cloudflareZoneId`, `shortHost`, `appHost`, `vercelCname` | infra (Pulumi config) |
 | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | GitHub Actions (Tailscale for deploys) |
 | `KAMAL_SSH_PRIVATE_KEY` | GitHub Actions (deploy user's key) |
 | `RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY` | GitHub Actions (GitHub App used by release-please) |

@@ -25,8 +25,8 @@
 | | **dev** | **staging** | **production** |
 |---|---|---|---|
 | Where | Your laptop | Oracle VM `url-shortener-staging` (1 OCPU / 4 GB) | Oracle VM `url-shortener-prod` (1 OCPU / 6 GB) |
-| API | `bin/dev` on `localhost:3000` | `https://<short>-staging.duckdns.org` | `https://<short>.duckdns.org` |
-| Web | `next dev` on `localhost:3001` | `https://<app>-staging.vercel.app` (Vercel alias on a preview deploy) | `https://<app>.vercel.app` |
+| API | `bin/dev` on `localhost:3000` | `https://go-staging.cellow.space` | `https://go.cellow.space` |
+| Web | `next dev` on `localhost:3001` | `https://console-staging.cellow.space` (Vercel alias on a preview deploy) | `https://console.cellow.space` |
 | Postgres | `docker compose up db` (`postgres:17`) | Kamal accessory | Kamal accessory |
 | `RAILS_ENV` | `development` | `production` | `production` |
 | Analytics | `ANALYTICS_ADAPTER=fake` (PostHog optional) | PostHog, staging project | PostHog, prod project |
@@ -62,7 +62,7 @@ push to main
   └─ ci            tests, lint, PR-title rules (same as ci.yml)
       └─ build     arm64 image, tagged <sha>, pushed to GHCR (once)
           └─ staging      kamal deploy -d staging --skip-push --version=<sha>
-                          vercel deploy (preview env) → alias <app>-staging.vercel.app
+                          vercel deploy (preview env) → alias console-staging.cellow.space
                           smoke test
               └─ release-please   opens/updates the release PR, or — when this push
                                   *is* the merged release PR — tags vX.Y.Z + GitHub Release

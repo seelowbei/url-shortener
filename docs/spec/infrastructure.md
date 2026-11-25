@@ -15,6 +15,7 @@ Three layers, each with one owner:
 ### State and auth
 - **State:** Pulumi Cloud, individual free plan (confirm it's still free). **Two stacks, `staging` and `prod`**, from the same code with different config ([environments and release flow](delivery.md#environments-and-release-flow)). Infra changes go to `staging` first. Secrets in the state are encrypted by Pulumi Cloud.
 - **Oracle auth:** an API signing key for your Oracle user, kept in the stack config, with the private key stored as a Pulumi secret.
+- **Cloudflare auth:** an API token with only *Zone → DNS → Edit* on the `cellow.space` zone, stored as the Pulumi secret `cloudflare:apiToken`.
 - **`pulumi up` runs only from your laptop.** CI never holds Oracle credentials and only type-checks `/infra` (`tsc --noEmit`).
 - **No surprise charges:** the account is limited to Always Free resources, so Pulumi can't create anything paid.
 
@@ -34,9 +35,9 @@ Each stack creates its own copy. Names below carry the stack suffix (`-staging` 
 | Backup bucket | **prod only** (`backupsEnabled` config): `url-shortener-backups`, private, lifecycle rule deleting objects after 14 days. Staging data is disposable seed data, so it has no backups. |
 | IAM policy for lifecycle rules | `Allow service objectstorage-<region> to manage object-family in compartment url-shortener`. Without it, the lifecycle rule fails silently. |
 | Backup user | IAM user `backup-bot` + group + policy that only allows managing objects in the backup bucket. A **Customer Secret Key** gives S3-compatible credentials for the backup container. |
-| DuckDNS update | `command.local.Command` that calls the DuckDNS update URL with the instance's public IP and runs again whenever the IP changes |
+| DNS records | Cloudflare provider, in the `cellow.space` zone (`cloudflareZoneId`): an A record for `shortHost` → the instance's public IP (updated whenever the IP changes), and a CNAME for `appHost` → the target Vercel shows for that domain (`vercelCname`). Both are DNS only (not proxied), so kamal-proxy gets its own Let's Encrypt certificate and redirects never pass through Cloudflare. |
 
-**Stack outputs:** `publicIp`, `tailscaleHost` (`url-shortener-<stack>`), `bucketName`, `s3Endpoint` (`https://<namespace>.compat.objectstorage.<region>.oraclecloud.com`), `backupAccessKeyId`, `backupSecretKey` (secret). Copy the outputs into Kamal secrets with `pulumi stack output --show-secrets`.
+**Stack outputs:** `publicIp`, `shortHost`, `tailscaleHost` (`url-shortener-<stack>`), `bucketName`, `s3Endpoint` (`https://<namespace>.compat.objectstorage.<region>.oraclecloud.com`), `backupAccessKeyId`, `backupSecretKey` (secret). Copy the outputs into Kamal secrets with `pulumi stack output --show-secrets`.
 
 ### cloud-init (`/infra/cloud-init.yaml`, templated)
 - `unattended-upgrades` enabled, 2 GB swap file.
@@ -71,17 +72,25 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 - **SSH:** only over Tailscale, key-only login, as the `deploy` user.
 
 ### Kamal
-- `config/deploy.yml` holds shared settings. **Destinations:** `config/deploy.staging.yml` and `config/deploy.production.yml` set the host (Tailscale name), proxy host (DuckDNS name) and env, with secrets in `.kamal/secrets.<destination>`. Deploy with `kamal deploy -d staging|production`.
+- `config/deploy.yml` holds shared settings. **Destinations:** `config/deploy.staging.yml` and `config/deploy.production.yml` set the host (Tailscale name), proxy host (`shortHost`) and env, with secrets in `.kamal/secrets.<destination>`. Deploy with `kamal deploy -d staging|production`.
 - One `web` role per VM. The image is built for `arm64` (native on Apple Silicon; in CI on GitHub's free `ubuntu-24.04-arm` runner for public repos).
 - Registry: GitHub Container Registry (`ghcr.io`), free.
-- kamal-proxy: TLS through Let's Encrypt for `<short>.duckdns.org`, health check on `/up`.
+- kamal-proxy: TLS through Let's Encrypt for `go.cellow.space` (staging: `go-staging.cellow.space`), health check on `/up`.
 - Env: `SOLID_QUEUE_IN_PUMA=true`, `WEB_CONCURRENCY=1`, `RAILS_MAX_THREADS=3`, database pool 5.
 - Rails trusts kamal-proxy for `X-Forwarded-For`, so the real client IP reaches `ClickJob`.
 
-### DuckDNS
-- A free subdomain pointing at the VM's public IP. The short links look like `https://<short>.duckdns.org/abc123`.
-- Two subdomains (DuckDNS allows 5 per account for free): `<short>.duckdns.org` (prod) and `<short>-staging.duckdns.org` (staging).
-- A custom domain can be added later (~$10/yr) with no code changes: update `SHORT_HOST` and the Kamal proxy host.
+### DNS (Cloudflare)
+- The `cellow.space` domain (the project's one paid item, renewed yearly) uses Cloudflare's free DNS. The registrar only points the nameservers at Cloudflare.
+- Short links look like `https://go.cellow.space/abc123`.
+
+| | Short links (Rails, A record → VM) | Web (Next.js, CNAME → Vercel) |
+|---|---|---|
+| staging | `go-staging.cellow.space` | `console-staging.cellow.space` |
+| production | `go.cellow.space` | `console.cellow.space` |
+
+- Each Pulumi stack owns its two records ([resources](#resources-infraindexts)). Nothing is set by hand in the Cloudflare dashboard.
+- Records stay **DNS only** (grey cloud). Proxying through Cloudflare would put a third party in the redirect path and break kamal-proxy's Let's Encrypt HTTP challenge.
+- The bare `cellow.space` is unused for now.
 
 ### Postgres (Kamal accessory on the same VM)
 - `postgres:17` accessory in `config/deploy.yml`, data on a host volume (`/var/lib/url-shortener/postgres`) on the VM's boot volume (Always Free block storage is 200 GB in total).
@@ -94,10 +103,11 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 ### Backups
 - A `backup` Kamal accessory (small cron container) runs `pg_dump -Fc` nightly for each database and uploads to **Oracle Object Storage** (Always Free 20 GB, S3-compatible API), keeping 14 days (bucket lifecycle rule).
 - The backup is stored off the VM, so losing the VM or its disk is recoverable.
-- **Restore drill**, documented in the README: `pulumi up --replace <instance-urn>` (new VM, DuckDNS updated automatically) → wait for cloud-init → `kamal setup` → `pg_restore` the latest dump → `kamal deploy`. Test it once before calling the deploy done.
+- **Restore drill**, documented in the README: `pulumi up --replace <instance-urn>` (new VM, DNS record updated automatically) → wait for cloud-init → `kamal setup` → `pg_restore` the latest dump → `kamal deploy`. Test it once before calling the deploy done.
 
 ### Vercel
-- Next.js on the Hobby plan, one Vercel project from `/web`.
+- Next.js on the Hobby plan, one Vercel project from `/web`, with the custom domains `console.cellow.space` (production) and `console-staging.cellow.space` (staging alias). Custom domains are free on Hobby.
+- Vercel only links a Preview domain to an existing Git branch, so `console-staging.cellow.space` is linked to a `staging` branch that **nobody pushes to**. The domain only moves when the pipeline runs `vercel alias`. Pushing to `staging` would hand the staging domain to that preview.
 - **The Git integration only builds PR previews.** `vercel.json` turns off automatic deploys from `main` (`"git": {"deploymentEnabled": {"main": false}}`). Staging and production web deploys run from GitHub Actions with the Vercel CLI, so the web app and the API always ship together ([environments and release flow](delivery.md#environments-and-release-flow)).
 - `API_ORIGIN` env var for the rewrites: the Vercel *Preview* environment points at the staging API, *Production* at the prod API.
 
