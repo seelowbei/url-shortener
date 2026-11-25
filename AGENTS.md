@@ -16,7 +16,7 @@ A Bitly-style URL shortener, built as a portfolio project. Everything must run o
 
 The design lives in `SPEC.md` (overview and build order) and `docs/spec/*.md` (details). Read the relevant doc before implementing anything. If the code and the spec disagree, stop and ask rather than silently picking one. When the user changes a decision, update the spec in the same PR.
 
-**Status:** build steps 1.1 (repo and branch protection) 1.2 (Rails skeleton) and 1.3 (Next.js skeleton) are done. Next is step 1.4 (CI). Do not start later build steps unless asked.
+**Status:** build steps 1.1 (repo and branch protection) 1.2 (Rails skeleton), 1.3 (Next.js skeleton) and 1.4 (CI) are done. Next is step 1.5 (accounts and prerequisites, manual). Do not start later build steps unless asked.
 
 ## Layout
 
@@ -27,6 +27,7 @@ api/                 Rails 8.1 API (+ Kamal config in api/config/deploy*.yml, ap
 web/                 Next.js app (pnpm, Node 26; has its own AGENTS.md for Next.js docs)
 infra/               Pulumi TypeScript program (build step 1.6)
 docker-compose.yml   dev Postgres 17 on localhost:5433
+.github/workflows/   CI: ci.yml (api, web jobs) and pr-title.yml; all three are required checks on main
 .claude/hooks/       agent safety hooks, shared by Claude Code and Codex
 ```
 
