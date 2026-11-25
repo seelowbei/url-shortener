@@ -16,7 +16,7 @@ A Bitly-style URL shortener, built as a portfolio project. Everything must run o
 
 The design lives in `SPEC.md` (overview and build order) and `docs/spec/*.md` (details). Read the relevant doc before implementing anything. If the code and the spec disagree, stop and ask rather than silently picking one. When the user changes a decision, update the spec in the same PR.
 
-**Status:** build steps 1.1 (repo and branch protection) 1.2 (Rails skeleton), 1.3 (Next.js skeleton) and 1.4 (CI) are done. Next is step 1.5 (accounts and prerequisites, manual). Do not start later build steps unless asked.
+**Status:** build steps 1.1 (repo and branch protection), 1.2 (Rails skeleton), 1.3 (Next.js skeleton) and 1.4 (CI) are done. Next is step 1.5 (accounts and prerequisites, manual). Do not start later build steps unless asked.
 
 ## Layout
 
