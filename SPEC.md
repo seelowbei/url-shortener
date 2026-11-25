@@ -1,0 +1,112 @@
+# URL Shortener — Spec
+
+Portfolio project: a Bitly-style URL shortener.
+
+- **API + redirects:** Rails 8 (API mode), Postgres, Solid Queue, Solid Cache, Alba, pagy, Faraday
+- **Error tracking:** Sentry (free plan), for both Rails and Next.js
+- **Frontend:** Next.js (App Router), TanStack Query, Tailwind v4, shadcn/ui (charts on Recharts), typed client generated from the API's OpenAPI spec
+- **Analytics:** PostHog (server-side event capture + HogQL Query API)
+
+## Spec documents
+
+| Doc | Covers |
+|---|---|
+| [Product](docs/spec/product.md) | Features, acceptance criteria, demo seed |
+| [API and data model](docs/spec/api.md) | Tables, endpoints, error shape, OpenAPI, CSRF |
+| [Backend](docs/spec/backend.md) | Rails structure, services, routes, redirect path, jobs, analytics query |
+| [Frontend](docs/spec/frontend.md) | Next.js routes, rendering, API client, UI, auth |
+| [Infrastructure and deployment](docs/spec/infrastructure.md) | Pulumi, Oracle VM, Kamal, Postgres, backups, Vercel |
+| [Testing, environments and release](docs/spec/delivery.md) | Tests, CI, dev/staging/prod, release-please pipeline, rollback |
+| [Config and secrets](docs/spec/config.md) | Every env var and where it lives |
+
+## Goals
+
+- Show a clean, well-tested full-stack app that a reviewer can explore in under 2 minutes.
+- Keep the redirect path fast: it never waits on a third-party call.
+- Out of scope: teams, custom domains, billing, bulk import, link-in-bio, geo/device targeting.
+
+## Architecture
+
+```
+Browser ──► Next.js on Vercel (<app>.vercel.app)
+              │  /api/* rewritten (proxied) ──────────────┐
+              ▼                                           ▼
+Visitor ──► GET <short>.duckdns.org/:code ──► kamal-proxy ──► Rails 8 API (Oracle A1 VM, Docker)
+                                                           │   302 + enqueue ClickJob
+                                         Solid Queue ──────┼──► PostHog capture (link_clicked)
+                                         Stats request ────┼──► PostHog Query API (HogQL), cached 60s
+                                         Link create ──────┼──► Google Safe Browsing v4
+                                                           └──► Postgres 17 (Kamal accessory, same VM)
+```
+
+Everything runs on free tiers: Vercel Hobby, Oracle Cloud Always Free (VM + Object Storage), PostHog Free, DuckDNS and GitHub Actions.
+
+Repo layout (monorepo):
+
+```
+/api     Rails 8 app (+ Kamal config)
+/web     Next.js app
+/infra   Pulumi (TypeScript) — Oracle Cloud infrastructure
+/.github/workflows/{ci,pipeline,rollback}.yml
+release-please-config.json, .release-please-manifest.json, version.txt, CHANGELOG.md
+```
+
+Rails serves the short domain directly, so redirects never go through Next.js. The frontend reaches Rails only through Next.js rewrites (`/api/:path*` → `https://<short>.duckdns.org/api/:path*`). That means the browser only ever talks to `<app>.vercel.app`. The Rails session cookie is first-party there (`SameSite=Lax`, `Secure`, no `Domain` attribute), and no CORS setup is needed. This works without a custom domain, even though `vercel.app` and `duckdns.org` are separate sites.
+
+## Build order
+
+1. **Walking skeleton on staging.** Each sub-step ends in something you can check:
+   1. **Repo:** `git init`, the monorepo layout, `.gitignore`, README stub, push to GitHub. Protect `main` (squash only, no direct pushes).
+      Done when: the repo is on GitHub and a direct push to `main` is rejected.
+   2. **Rails skeleton:** `rails new api --api --database=postgresql`, RSpec, RuboCop, `docker compose up db` for dev, `GET /up`, and `GET /api/health` returning `{version, sha}`.
+      Done when: `bin/rails spec` passes locally, and `docker build --platform linux/arm64` succeeds.
+   3. **Next.js skeleton:** `create-next-app` (TypeScript, App Router, pnpm), Tailwind v4, shadcn init, ESLint + Prettier, Vitest. A hello page calls `/api/health` through the rewrite.
+      Done when: the page shows the API version with both apps running locally.
+   4. **CI:** `ci.yml` with `api` (rubocop, rspec) and `web` (lint, typecheck, vitest, build) jobs, plus the Conventional Commits PR-title check, all required on `main`.
+      Done when: a test PR shows all checks green and can only be merged once they pass.
+   5. **Accounts and prerequisites** (manual, one-time):
+      - an Oracle API signing key
+      - a Pulumi Cloud account
+      - a Tailscale tailnet with `tag:server` / `tag:ci` ACLs and an OAuth client
+      - DuckDNS subdomains (`<short>`, `<short>-staging`)
+      - a Vercel project linked to `/web`
+      - the release-please GitHub App
+      Done when: every value in [config](docs/spec/config.md) for staging has a home (Pulumi config or GitHub `staging` environment secrets).
+   6. **Pulumi `staging` stack:** compartment, network, security list (80/443 only), A1 VM with cloud-init, DuckDNS update.
+      Done when: `ssh deploy@url-shortener-staging` works over Tailscale, `docker ps` runs, and `<short>-staging.duckdns.org` resolves to the VM.
+   7. **First Kamal deploy from your laptop:** `deploy.yml` + the `staging` destination, Postgres accessory, Let's Encrypt TLS.
+      Done when: `https://<short>-staging.duckdns.org/up` returns 200 with a valid certificate.
+   8. **Vercel staging:** `vercel.json` (automatic deploys from `main` off), `API_ORIGIN` for the Preview environment, then a manual `vercel deploy` + `vercel alias` to `<app>-staging.vercel.app`.
+      Done when: the staging page shows the version coming from the staging API through the rewrite.
+   9. **Automate it:** in `pipeline.yml`, the build (arm64 runner → GHCR, tagged with the commit hash), staging deploy (Tailscale → `kamal deploy -d staging`, Vercel CLI deploy + alias) and smoke test jobs.
+      Done when: merging a PR to `main` updates staging on its own, and `/up` reports the new commit hash.
+2. **Production and the release flow.** The hello-world build goes all the way to production, so the whole pipeline is proven before any features exist:
+   1. **Pulumi `prod` stack:** VM (1 OCPU / 6 GB), backup bucket with the 14-day lifecycle rule, the IAM policy that lets the lifecycle rule run, the `backup-bot` user + S3-style key, and the prod DuckDNS update.
+      Done when: `ssh deploy@url-shortener-prod` works over Tailscale, `<short>.duckdns.org` resolves, and the bucket shows the lifecycle rule.
+   2. **Production secrets:**
+      - a GitHub `production` environment with you as required reviewer, deploys allowed only from `main`, and its secrets
+      - Vercel Production env vars (`API_ORIGIN` pointing at the prod API)
+      Done when: every value in [config](docs/spec/config.md) for production has a home.
+   3. **First Kamal deploy to production, from your laptop:** `kamal setup -d production`.
+      Done when: `https://<short>.duckdns.org/up` returns 200 with a valid certificate.
+   4. **Backups:** the `backup` accessory (nightly `pg_dump` → Object Storage).
+      Done when: a manual run puts a dump in the bucket, and `pg_restore` of that dump into a local database succeeds.
+   5. **release-please:** config files, the manifest at `0.0.0`, `version.txt`, and the release-please job in `pipeline.yml`, using the GitHub App token.
+      Done when: after a `feat:` merge, a `chore(main): release 0.1.0` PR appears with a CHANGELOG, and CI runs on it.
+   6. **Production job:** runs only when a release is created, waits in the `production` environment for approval, then retags the image, runs `kamal deploy -d production`, `vercel deploy --prod` and the smoke test.
+      Done when: the job is in `pipeline.yml` and skipped on normal merges. Its first real run happens in the next step.
+   7. **First release:** merge the release PR → approve the production deploy.
+      Done when: tag `v0.1.0` and its GitHub Release exist, `<short>.duckdns.org/up` reports `0.1.0`, and `<app>.vercel.app` shows `v0.1.0` in the footer.
+   8. **Rollback workflow:** `rollback.yml` (manual run with a tag as input).
+      Done when: running it with `v0.1.0` redeploys that image to production and `/up` reports the same commit hash.
+   9. **Monitoring:** UptimeRobot on staging and production `/up`, and Sentry projects for Rails and Next.js, tagged with release and environment.
+      Done when: a test exception shows up in Sentry tagged `0.1.0` / `production`, and stopping staging's Rails container triggers an UptimeRobot alert.
+3. Links model, code generation, `POST /api/links`, redirect
+4. Auth (generator + first-party cookie through the Next.js `/api` rewrite)
+5. Dashboard: list / edit / disable / delete / QR
+6. Analytics adapter, `ClickJob`, PostHog capture
+7. Stats endpoint (HogQL + cache) and per-link analytics UI
+8. Safe Browsing check, rescan job, interstitial
+9. Public stats page (`/:code+`)
+10. Demo seed + backfill, "Try the demo" button
+11. Polish: 404/interstitial pages, README with screenshots and architecture, then a commit with a `Release-As: 1.0.0` footer so release-please proposes `v1.0.0` (with `bump-minor-pre-major`, a `feat!:` alone would only bump the minor version)
