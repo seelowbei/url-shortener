@@ -26,9 +26,9 @@ SPEC.md              overview, architecture, build order
 docs/spec/           product, api, backend, frontend, infrastructure, delivery, config
 api/                 Rails 8.1 API (+ Kamal config in api/config/deploy*.yml, api/.kamal/)
 web/                 Next.js app (pnpm, Node 26; has its own AGENTS.md for Next.js docs)
-infra/               Pulumi TypeScript program (build step 1.6)
+infra/               Pulumi TypeScript program (pnpm, Node 26); run from your laptop only
 docker-compose.yml   dev Postgres 17 on localhost:5433
-.github/workflows/   CI: ci.yml (api, web jobs) and pr-title.yml; all three are required checks on main
+.github/workflows/   CI: ci.yml (api, web, infra jobs) and pr-title.yml; all are required checks on main
 .claude/hooks/       agent safety hooks, shared by Claude Code and Codex
 ```
 
@@ -55,6 +55,12 @@ pnpm typecheck                          # route types + tsc --noEmit
 pnpm test                               # Vitest
 pnpm format:check                       # Prettier; `pnpm format` to fix
 pnpm build                              # production build
+
+cd infra
+pnpm install
+pnpm typecheck                          # tsc --noEmit (the only check CI runs, with format:check)
+pnpm format:check                       # Prettier
+pulumi preview -s staging               # needs the user's local OCI config; applying is the user's job
 
 node --test ".claude/hooks/*.test.mjs"  # hook tests (from the repo root)
 ```

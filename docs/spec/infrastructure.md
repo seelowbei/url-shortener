@@ -30,7 +30,7 @@ Each stack creates its own copy. Names below carry the stack suffix (`-staging` 
 | Public subnet | `10.0.1.0/24` |
 | Security list | Ingress TCP **80, 443** from anywhere, plus ICMP 3/4 (needed so large packets get through). **No port 22** (SSH goes over Tailscale). An optional config value, `sshAllowCidr`, can open 22 to a single IP for emergencies. Egress: everything. |
 | Ubuntu image | Looked up with `getImages`: Canonical Ubuntu 24.04 aarch64, latest. The instance ignores later changes to it (`ignoreChanges: ["sourceDetails"]`), so a newer image doesn't replace the VM. |
-| Instance | `VM.Standard.A1.Flex`, 50 GB boot volume. Size from config: **prod 1 OCPU / 6 GB, staging 1 OCPU / 4 GB** (2 OCPU / 10 GB / 100 GB in total, within the free 4 OCPU / 24 GB / 200 GB). The availability domain comes from config (`availabilityDomainIndex`), to work around "out of capacity". Metadata: your SSH public key + cloud-init `user_data`. |
+| Instance | `VM.Standard.A1.Flex`, 50 GB boot volume. Size from config (`ocpus`, `memoryInGbs`): **prod 1 OCPU / 6 GB, staging 1 OCPU / 4 GB** (2 OCPU / 10 GB / 100 GB in total, within the free 4 OCPU / 24 GB / 200 GB). The availability domain comes from config (`availabilityDomainIndex`), to work around "out of capacity". Metadata: the deploy SSH public key (`sshPublicKey`) + cloud-init `user_data`. |
 | Public IP | The VM's temporary public IP (it changes only when the VM is replaced). Optional `reservedIp` config flag; check it's covered by Always Free before turning it on. |
 | Backup bucket | **prod only** (`backupsEnabled` config): `url-shortener-backups`, private, lifecycle rule deleting objects after 14 days. Staging data is disposable seed data, so it has no backups. |
 | IAM policy for lifecycle rules | `Allow service objectstorage-<region> to manage object-family in compartment url-shortener`. Without it, the lifecycle rule fails silently. |
@@ -43,7 +43,7 @@ Each stack creates its own copy. Names below carry the stack suffix (`-staging` 
 - `unattended-upgrades` enabled, 2 GB swap file.
 - `iptables`: allow 80/443 before Oracle's default REJECT rule, then `netfilter-persistent save`.
 - Docker Engine installed from Docker's apt repository, so Kamal doesn't need to install it.
-- A `deploy` user in the `docker` group with your SSH public key. `PasswordAuthentication no`, `PermitRootLogin no`.
+- A `deploy` user in the `docker` group with the deploy SSH public key (`sshPublicKey`). `PasswordAuthentication no`, `PermitRootLogin no`.
 - Tailscale: install it, then `tailscale up --authkey=<one-time key> --hostname=url-shortener-<stack>`.
   - The auth key is single-use, pre-approved, tagged `tag:server`, and expires after 1 day. It ends up in instance metadata, so it must not be reusable.
 
