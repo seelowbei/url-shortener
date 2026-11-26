@@ -1,33 +1,37 @@
 name: url-shortener
-description: Oracle Cloud VM, network and Cloudflare DNS for the URL shortener (see docs/spec/infrastructure.md)
+description: AWS EC2 VM, network and Cloudflare DNS for the URL shortener (see docs/spec/infrastructure.md)
 runtime:
   name: nodejs
   options:
     packagemanager: pnpm
 config:
-  # Also required, set per stack: oci:tenancyOcid, oci:userOcid, oci:fingerprint,
-  # oci:privateKey (secret), oci:region, cloudflare:apiToken (secret).
-  ocpus:
+  # Also required, set per stack: aws:region (committed), aws:profile (local AWS CLI profile),
+  # cloudflare:apiToken (secret).
+  instanceType:
+    type: string
+    description: EC2 instance type, arm64 Graviton (e.g. t4g.small)
+  volumeSizeGb:
     type: integer
-    description: OCPUs for the A1 VM (Always Free total is 4 across all VMs)
-  memoryInGbs:
-    type: integer
-    description: Memory for the A1 VM in GB (Always Free total is 24 across all VMs)
-  availabilityDomainIndex:
+    description: Root gp3 volume size in GB
+  availabilityZoneIndex:
     type: integer
     default: 0
-    description: Which availability domain to use; change it to work around "out of capacity"
+    description: Which availability zone (sorted by name) to use; change it if the instance type has no capacity
+  elasticIp:
+    type: boolean
+    default: false
+    description: Give the VM a fixed Elastic IP (prod). Without it the public IP changes on every start (staging)
+  running:
+    type: boolean
+    default: true
+    description: Staging only. false stops the VM (only its disk is billed) and removes the short-host DNS record
   sshPublicKey:
     type: string
     description: Deploy SSH public key, authorized for the deploy user
-  sshAllowCidr:
-    type: string
-    default: ""
-    description: Emergency only, a single CIDR (e.g. 203.0.113.7/32) allowed on port 22; empty keeps 22 closed
   tailscaleAuthKey:
     type: string
     secret: true
-    description: Single-use, pre-approved, tag:server Tailscale auth key (expires in 1 day)
+    description: Single-use, pre-approved, tag:server Tailscale auth key (expires in 1 day); read on first boot only
   cloudflareZoneId:
     type: string
     description: Cloudflare zone ID for cellow.space

@@ -1,9 +1,12 @@
-# Non-secret staging config. OCI credentials, sshPublicKey and the secrets are set with
+# Non-secret staging config. aws:profile, sshPublicKey and the secrets are set with
 # `pulumi config set` (see infra/README.md); Pulumi Cloud encrypts the secret values.
 config:
-  url-shortener:ocpus: 1
-  url-shortener:memoryInGbs: 4
-  url-shortener:availabilityDomainIndex: 0
+  aws:region: ap-southeast-1
+  url-shortener:instanceType: t4g.small
+  url-shortener:volumeSizeGb: 20
+  url-shortener:availabilityZoneIndex: 0
+  url-shortener:elasticIp: false
+  url-shortener:running: true
   url-shortener:cloudflareZoneId: 3e7ed690a0d29cc55c20b1469a01c17b
   url-shortener:shortHost: go-staging.cellow.space
   url-shortener:appHost: console-staging.cellow.space

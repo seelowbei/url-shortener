@@ -104,7 +104,7 @@ jobs:
       - name: Build
         run: pnpm build
 
-  # Type-check only: CI never holds Oracle or Cloudflare credentials, and `pulumi up` is laptop-only.
+  # Type-check only: CI never holds AWS or Cloudflare credentials, and `pulumi up` is laptop-only.
   infra:
     runs-on: ubuntu-latest
     timeout-minutes: 10

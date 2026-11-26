@@ -43,14 +43,6 @@ write_files:
 runcmd:
   - systemctl restart ssh
 
-  # Oracle's Ubuntu image ends the INPUT chain with a REJECT rule. Accept 80/443 just before it,
-  # and save before Docker starts so its own rules aren't persisted.
-  - |
-    set -eu
-    line=$(iptables -L INPUT --line-numbers | awk '/REJECT/ { print $1; exit }')
-    iptables -I INPUT "${line:-1}" -p tcp -m multiport --dports 80,443 -m conntrack --ctstate NEW -j ACCEPT
-    netfilter-persistent save
-
   # Docker Engine from Docker's apt repository (https://docs.docker.com/engine/install/ubuntu/).
   - |
     set -eu
