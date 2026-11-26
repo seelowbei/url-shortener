@@ -8,7 +8,14 @@
 set -euo pipefail
 
 case "${KAMAL_COMMAND:-}" in
-  setup | deploy | redeploy | rollback | registry | accessory | env) ;;
+  setup | deploy | redeploy | rollback | registry | env) ;;
+  accessory)
+    # Only boot/reboot push the accessory's env file; logs, details etc. are read-only.
+    case "${KAMAL_SUBCOMMAND:-}" in
+      boot | reboot) ;;
+      *) exit 0 ;;
+    esac
+    ;;
   *) exit 0 ;;
 esac
 
