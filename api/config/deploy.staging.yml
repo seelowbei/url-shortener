@@ -15,5 +15,6 @@ env:
 accessories:
   db:
     host: url-shortener-staging
-    # Sized for a 1 GB VM shared with Rails.
-    cmd: postgres -c shared_buffers=128MB -c max_connections=30
+    # Sized for a 1 GB VM shared with Rails. Each app container can open up to 15 connections
+    # (3 pools of 5), and a deploy briefly runs two, so 40 leaves headroom.
+    cmd: postgres -c shared_buffers=128MB -c max_connections=40

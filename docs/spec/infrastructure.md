@@ -74,10 +74,10 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 - `config/deploy.yml` holds shared settings. **Destinations:** `config/deploy.staging.yml` and `config/deploy.production.yml` set the host (Tailscale name), proxy host (`shortHost`) and env, with secrets in `.kamal/secrets.<destination>`. Deploy with `kamal deploy -d staging|production`.
 - One `web` role per VM. The image is built for `arm64` (native on Apple Silicon; in CI on GitHub's free `ubuntu-24.04-arm` runner for public repos).
 - Registry: GitHub Container Registry (`ghcr.io/seelowbei/url-shortener`, private), free. `deploy.yml` sets `require_destination: true`, so nothing runs without `-d`.
-- kamal-proxy: TLS through Let's Encrypt for `go.cellow.space` (staging: `go-staging.cellow.space`), health check on `/up`. Rails runs with `assume_ssl` + `force_ssl`, and `config.hosts` allows only `SHORT_HOST`. `/up` is exempt from both, because the health check calls the container over plain HTTP by its internal address.
+- kamal-proxy: TLS through Let's Encrypt for `go.cellow.space` (staging: `go-staging.cellow.space`), health check on `/up`. Rails runs with `assume_ssl` + `force_ssl`, and `config.hosts` allows only `SHORT_HOST`, which is required: the app won't boot without it, so a missing value fails the deploy instead of allowing every host. `/up` is exempt from both, because the health check calls the container over plain HTTP by its internal address.
 - Env: `SOLID_QUEUE_IN_PUMA=true`, `WEB_CONCURRENCY=1`, `RAILS_MAX_THREADS=3`, database pool 5, plus `APP_ENV` and `SHORT_HOST` per destination.
 - kamal-proxy replaces any client-sent `X-Forwarded-For` with the real client IP. Rails trusts private-network proxies by default, so that IP reaches `ClickJob`.
-- **Deploying from the laptop:** `.kamal/secrets.<destination>` only references environment variables (`KAMAL_REGISTRY_PASSWORD`, `SECRET_KEY_BASE`, `POSTGRES_PASSWORD`), so you export them from your password manager first. `~/.ssh/config` maps `url-shortener-*` to the deploy key. In CI the same variables come from the GitHub environment's secrets, and the key goes into ssh-agent.
+- **Deploying from the laptop:** `.kamal/secrets.<destination>` only references environment variables (`KAMAL_REGISTRY_PASSWORD`, `SECRET_KEY_BASE`, `POSTGRES_PASSWORD`), so you export them from your password manager first. `~/.ssh/config` maps `url-shortener-*` to the deploy key. In CI the same variables come from the GitHub environment's secrets, and the key goes into ssh-agent. An unset variable would silently become an empty secret, so the `.kamal/hooks/pre-connect` hook aborts `setup`, `deploy`, `redeploy`, `rollback`, `registry`, `env` and `accessory boot`/`reboot` if any name in the destination's secrets file is empty. Read-only commands (`app logs`, `accessory details`, …) skip the check.
 
 ### DNS (Cloudflare)
 - The `cellow.space` domain (renewed yearly) uses Cloudflare's free DNS. The registrar only points the nameservers at Cloudflare.
@@ -96,9 +96,10 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 - `postgres:17` accessory in `config/deploy.yml`, data on a host directory on the VM's root volume (`~deploy/url-shortener-db/data`). It's under the deploy user's home because Kamal creates the directory as `deploy`, which can't write to `/var/lib`.
 - **Not exposed publicly:** no published port (or bound to `127.0.0.1` only). The app reaches it by container name on the Kamal Docker network. Port 5432 stays closed in the security group.
 - One database server holds the primary, Solid Queue and Solid Cache databases (Rails 8 multi-database config). Solid Cache is capped (`max_size: 256.megabytes`), and Solid Queue clears finished jobs.
-- Tuning for a VM shared with Rails: `max_connections=30`, plus `shared_buffers=256MB` on prod (2 GB) and `128MB` on staging (1 GB).
+- Tuning for a VM shared with Rails: `max_connections=40` (each app container can open up to 15 connections, across 3 pools of 5, and a deploy briefly runs two), plus `shared_buffers=256MB` on prod (2 GB) and `128MB` on staging (1 GB).
 - **Local access:** an SSH tunnel (`ssh -L 5433:127.0.0.1:5432 …`, with the port bound to localhost on the VM) for seeds, the click backfill and debugging from your laptop.
 - Upgrades: pin the major version and change it on purpose, with dump → restore. Never `latest`.
+- **Changing `POSTGRES_PASSWORD`:** Postgres stores the password on first start only. Change it inside the database first (`ALTER USER url_shortener PASSWORD '…'`), then update the GitHub secret and redeploy.
 
 ### Backups
 - A `backup` Kamal accessory (small cron container) runs `pg_dump -Fc` nightly for each database and uploads to the **S3 backup bucket**, keeping 14 days (bucket lifecycle rule). It authenticates with the instance role through IMDSv2, so there are no long-lived access keys.

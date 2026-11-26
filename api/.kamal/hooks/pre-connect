@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Abort before Kamal touches a server if a secret it's about to push is missing.
+#
+# .kamal/secrets.<destination> resolves each secret from an environment variable of the same
+# name; an unset variable silently becomes an empty string. Kamal runs this hook with the
+# resolved secrets in the environment, so check every name in that file is non-empty.
+# Only for commands that send secrets to the servers; read-only ones (logs, details, ...) skip it.
+set -euo pipefail
+
+case "${KAMAL_COMMAND:-}" in
+  setup | deploy | redeploy | rollback | registry | env) ;;
+  accessory)
+    # Only boot/reboot push the accessory's env file; logs, details etc. are read-only.
+    case "${KAMAL_SUBCOMMAND:-}" in
+      boot | reboot) ;;
+      *) exit 0 ;;
+    esac
+    ;;
+  *) exit 0 ;;
+esac
+
+secrets_file=".kamal/secrets.${KAMAL_DESTINATION:-}"
+[ -f "$secrets_file" ] || exit 0
+
+missing=()
+while IFS= read -r name; do
+  [ -n "${!name:-}" ] || missing+=("$name")
+done < <(sed -n 's/^\([A-Z_][A-Z0-9_]*\)=.*/\1/p' "$secrets_file")
+
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "Missing secrets for -d ${KAMAL_DESTINATION}: ${missing[*]}" >&2
+  echo "Export them first (laptop: read -rs NAME && export NAME; CI: the GitHub environment secrets)." >&2
+  exit 1
+fi
