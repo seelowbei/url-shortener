@@ -134,12 +134,16 @@ const userData = pulumi.secret(
   }),
 );
 
+// Latest Canonical Ubuntu 24.04 arm64 image, from Canonical's public SSM parameter. The provider
+// needs a real ami-… ID (it calls DescribeImages), so EC2's "resolve:ssm:" shortcut doesn't work.
+const ubuntuAmi = aws.ssm.getParameterOutput({
+  name: "/aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id",
+}).insecureValue;
+
 const instance = new aws.ec2.Instance(
   prefix,
   {
-    // Resolved by EC2 at launch to the latest Canonical Ubuntu 24.04 arm64 image, so a newer image
-    // never shows up as a diff; replace the VM on purpose with `pulumi up --replace`.
-    ami: "resolve:ssm:/aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id",
+    ami: ubuntuAmi,
     instanceType,
     subnetId: subnet.id,
     vpcSecurityGroupIds: [securityGroup.id],
@@ -161,9 +165,10 @@ const instance = new aws.ec2.Instance(
     creditSpecification: { cpuCredits: "standard" },
     tags,
   },
-  // cloud-init only runs on first boot, so a user_data change (e.g. a new one-time Tailscale key)
-  // would just stop/start the VM for nothing.
-  { ignoreChanges: ["userData"] },
+  // A newer Ubuntu image must not replace the VM (replace it on purpose with `pulumi up --replace`),
+  // and cloud-init only runs on first boot, so a user_data change (e.g. a new one-time Tailscale
+  // key) would just stop/start the VM for nothing.
+  { ignoreChanges: ["ami", "userData"] },
 );
 
 let publicIp: pulumi.Output<string>;
