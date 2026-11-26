@@ -16,7 +16,22 @@ const availabilityZoneIndex = config.getNumber("availabilityZoneIndex") ?? 0;
 // prod: a fixed Elastic IP. staging: the instance's own public IP, which changes on every start.
 const elasticIp = config.getBoolean("elasticIp") ?? false;
 // staging only: false stops the VM (you pay for its disk only) and removes the short-host record.
-const running = config.getBoolean("running") ?? true;
+// STAGING_RUNNING=true|false overrides the committed value, so `pnpm staging:start` / `staging:stop`
+// switch it without editing Pulumi.staging.yaml. The committed value stays "false".
+const running = runningFlag();
+function runningFlag(): boolean {
+  const override =
+    stack === "staging" ? process.env.STAGING_RUNNING : undefined;
+  if (override === undefined || override === "") {
+    return config.getBoolean("running") ?? true;
+  }
+  if (override !== "true" && override !== "false") {
+    throw new Error(
+      `STAGING_RUNNING must be "true" or "false", got "${override}"`,
+    );
+  }
+  return override === "true";
+}
 const sshPublicKey = config.require("sshPublicKey").trim();
 const tailscaleAuthKey = config.requireSecret("tailscaleAuthKey");
 const cloudflareZoneId = config.require("cloudflareZoneId");
