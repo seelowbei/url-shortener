@@ -61,6 +61,8 @@ pnpm install
 pnpm typecheck                          # tsc --noEmit (the only check CI runs, with format:check)
 pnpm format:check                       # Prettier
 pulumi preview -s staging               # needs the user's local OCI config; applying is the user's job
+                                        # (STAGING_RUNNING=true while staging is up, or it previews a stop)
+pnpm staging:start / staging:stop       # the user's: start staging + deploy latest main / stop it
 
 node --test ".claude/hooks/*.test.mjs"  # hook tests (from the repo root)
 ```
@@ -95,7 +97,7 @@ Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brake
 
 - **Push to `main` or merge into it.** `main` is protected on GitHub, and `.claude/hooks/protect-main.mjs` also blocks the attempt. Push a feature branch and open a PR. Check `git status -sb` before committing, since the user may have merged and switched branches between turns.
 - **Deploy or change servers:** no `kamal setup`, `deploy`, `redeploy`, `rollback`, `app`, `accessory`, `proxy`, `remove`, `prune`, `server` or `lock` commands. Deploys are CI-only: merge to `main` → staging, merged release PR → production.
-- **Change infrastructure:** no `pulumi up`, `destroy`, `refresh`, `import`, `cancel`, `state`, `stack init/rm` or `config set/rm`. `pulumi preview` is fine. Ask the user to apply.
+- **Change infrastructure:** no `pulumi up`, `destroy`, `refresh`, `import`, `cancel`, `state`, `stack init/rm` or `config set/rm`, and no `pnpm staging:start` / `staging:stop` (they run `pulumi up`). `pulumi preview` is fine. Ask the user to apply.
 - **Touch secrets:** never read, print or commit `config/master.key`, `config/credentials/*.key`, `.env` files, `*.pem` keys or decrypted credentials (`rails credentials:show`, `kamal secrets print`, `--show-secrets`). `.claude/hooks/protect-secrets.mjs` blocks these for both agents.
   When adding a variable, update `docs/spec/config.md` and the committed `*.sample` / `.kamal/secrets*` references instead.
 - **Send real user data** (URLs, IPs, emails) to any service other than PostHog and Google Safe Browsing, and only as the spec describes.
