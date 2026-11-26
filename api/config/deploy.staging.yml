@@ -1,0 +1,19 @@
+# Staging destination: EC2 url-shortener-staging (t4g.micro, 1 GB), reached over Tailscale.
+# Merged over config/deploy.yml. Secrets: .kamal/secrets.staging.
+servers:
+  web:
+    - url-shortener-staging
+
+proxy:
+  host: go-staging.cellow.space
+
+env:
+  clear:
+    APP_ENV: staging
+    SHORT_HOST: go-staging.cellow.space
+
+accessories:
+  db:
+    host: url-shortener-staging
+    # Sized for a 1 GB VM shared with Rails.
+    cmd: postgres -c shared_buffers=128MB -c max_connections=30

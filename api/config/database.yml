@@ -28,6 +28,8 @@ test:
 production:
   primary: &primary_production
     <<: *default
+    # Puma's 3 threads plus Solid Queue's workers and dispatcher in the same process.
+    max_connections: 5
     host: <%= ENV.fetch("DB_HOST") { "url-shortener-db" } %>
     port: <%= ENV.fetch("DB_PORT") { 5432 } %>
     username: <%= ENV.fetch("DB_USER") { "url_shortener" } %>

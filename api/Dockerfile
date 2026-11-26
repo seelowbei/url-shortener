@@ -3,7 +3,8 @@
 
 # This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
 # docker build -t api .
-# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name api api
+# docker run -d -p 80:80 -e SECRET_KEY_BASE=<output of bin/rails secret> --name api api
+# Secrets are env vars per environment (docs/spec/config.md); there is no credentials file.
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
