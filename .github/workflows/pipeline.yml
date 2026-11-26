@@ -122,8 +122,8 @@ jobs:
 
       # A preview deploy (Preview env, so API_ORIGIN is the staging API), then the staging alias.
       # Runs from the repo root because the Vercel project's root directory is web/.
-      # `vercel alias` ignores VERCEL_ORG_ID and falls back to the token's personal scope, so the
-      # team is passed explicitly with --scope.
+      # The alias goes through the REST API: `vercel alias` first loads the token's user, which a
+      # team-scoped token can't do ("User not found"), with or without --scope.
       - name: Deploy the web app (Vercel)
         if: steps.staging.outputs.online == 'true'
         env:
@@ -133,7 +133,11 @@ jobs:
         run: |
           npm install --global --no-fund --no-audit vercel@66.6.0
           url=$(vercel deploy --yes --token "$VERCEL_TOKEN")
-          vercel alias set "$url" console-staging.cellow.space --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN"
+          api() { curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN" "$@"; }
+          id=$(api "https://api.vercel.com/v13/deployments/${url#https://}?teamId=$VERCEL_ORG_ID" | jq -r .id)
+          api -X POST -H "Content-Type: application/json" \
+            -d '{"alias":"console-staging.cellow.space"}' \
+            "https://api.vercel.com/v2/deployments/$id/aliases?teamId=$VERCEL_ORG_ID" | jq -c '{alias, created}'
 
       # Both the API and the web app (through the /api rewrite) must report this commit.
       # The links round trip (POST /api/links → GET /:code) joins once those endpoints exist.
