@@ -42,8 +42,10 @@ env:
     SOLID_QUEUE_IN_PUMA: true
     WEB_CONCURRENCY: 1
     RAILS_MAX_THREADS: 3
+  # Every secret is a per-environment env var (GitHub environment secrets), never a credentials
+  # file: SECRET_KEY_BASE differs between staging and production.
   secret:
-    - RAILS_MASTER_KEY
+    - SECRET_KEY_BASE
     - POSTGRES_PASSWORD
 
 # Postgres on the same VM. The app reaches it as url-shortener-db over the kamal Docker network.
