@@ -23,10 +23,10 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `API_ORIGIN` (server-side only, used by rewrites and server-side fetches) | web |
 | `NEXT_PUBLIC_APP_ENV` (`development`/`staging`/`production`), `NEXT_PUBLIC_APP_VERSION` | web |
 | `NEXT_PUBLIC_SHORT_HOST` (display only, e.g. the domain hint in the alias input) | web |
-| `oci:tenancyOcid`, `oci:userOcid`, `oci:fingerprint`, `oci:privateKey`, `oci:region` | infra (Pulumi config, private key as secret; local only, not in CI) |
+| `aws:profile` (your local AWS CLI profile; the credentials stay in `~/.aws`, never in config) | infra (Pulumi config, local only, not in CI) |
 | `tailscaleAuthKey`, `cloudflare:apiToken` | infra (Pulumi config secrets) |
-| `cloudflareZoneId`, `shortHost`, `appHost`, `vercelCname`, `ocpus`, `memoryInGbs`, `availabilityDomainIndex` | infra (Pulumi config, committed in `Pulumi.<stack>.yaml`) |
-| `sshPublicKey` (deploy key), `sshAllowCidr` (optional, emergency SSH) | infra (Pulumi config) |
+| `aws:region`, `cloudflareZoneId`, `shortHost`, `appHost`, `vercelCname`, `instanceType`, `volumeSizeGb`, `availabilityZoneIndex`, `elasticIp`, `running` | infra (Pulumi config, committed in `Pulumi.<stack>.yaml`) |
+| `sshPublicKey` (deploy key) | infra (Pulumi config) |
 | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | GitHub Actions (Tailscale for deploys) |
 | `KAMAL_SSH_PRIVATE_KEY` | GitHub Actions (deploy user's key) |
 | `RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY` | GitHub Actions (GitHub App used by release-please) |

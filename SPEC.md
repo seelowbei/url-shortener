@@ -15,7 +15,7 @@ Portfolio project: a Bitly-style URL shortener.
 | [API and data model](docs/spec/api.md) | Tables, endpoints, error shape, OpenAPI, CSRF |
 | [Backend](docs/spec/backend.md) | Rails structure, services, routes, redirect path, jobs, analytics query |
 | [Frontend](docs/spec/frontend.md) | Next.js routes, rendering, API client, UI, auth |
-| [Infrastructure and deployment](docs/spec/infrastructure.md) | Pulumi, Oracle VM, Kamal, Postgres, backups, Vercel |
+| [Infrastructure and deployment](docs/spec/infrastructure.md) | Pulumi, AWS EC2 VM, Kamal, Postgres, backups, Vercel |
 | [Testing, environments and release](docs/spec/delivery.md) | Tests, CI, dev/staging/prod, release-please pipeline, rollback |
 | [Config and secrets](docs/spec/config.md) | Every env var and where it lives |
 
@@ -31,7 +31,7 @@ Portfolio project: a Bitly-style URL shortener.
 Browser ──► Next.js on Vercel (console.cellow.space)
               │  /api/* rewritten (proxied) ──────────────┐
               ▼                                           ▼
-Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rails 8 API (Oracle A1 VM, Docker)
+Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rails 8 API (AWS EC2 t4g, Docker)
                                                            │   302 + enqueue ClickJob
                                          Solid Queue ──────┼──► PostHog capture (link_clicked)
                                          Stats request ────┼──► PostHog Query API (HogQL), cached 60s
@@ -39,14 +39,14 @@ Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rail
                                                            └──► Postgres 17 (Kamal accessory, same VM)
 ```
 
-Everything runs on free tiers: Vercel Hobby, Oracle Cloud Always Free (VM + Object Storage), PostHog Free, Cloudflare DNS Free and GitHub Actions. The one paid item is the `cellow.space` domain (yearly renewal).
+Everything except the VMs runs on free tiers: Vercel Hobby, PostHog Free, Cloudflare DNS Free and GitHub Actions. The paid items are the `cellow.space` domain (yearly renewal) and AWS (two EC2 VMs in Singapore plus an S3 backup bucket). AWS is budgeted at about $20/month, with staging stopped when not in use.
 
 Repo layout (monorepo):
 
 ```
 /api     Rails 8 app (+ Kamal config)
 /web     Next.js app
-/infra   Pulumi (TypeScript) — Oracle Cloud infrastructure
+/infra   Pulumi (TypeScript) — AWS infrastructure and Cloudflare DNS
 /.github/workflows/{ci,pipeline,rollback}.yml
 release-please-config.json, .release-please-manifest.json, version.txt, CHANGELOG.md
 ```
@@ -65,23 +65,23 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
    4. **CI:** `ci.yml` with `api` (rubocop, rspec) and `web` (lint, typecheck, vitest, build) jobs, plus the Conventional Commits PR-title check, all required on `main`.
       Done when: a test PR shows all checks green and can only be merged once they pass.
    5. **Accounts and prerequisites** (manual, one-time):
-      - an Oracle API signing key
+      - an AWS account on the Paid plan with an AWS Budgets alert at $20/month, and an AWS CLI profile for Pulumi (replaced the Oracle account, which could never get an A1 VM)
       - a Pulumi Cloud account
       - a Tailscale tailnet with `tag:server` / `tag:ci` ACLs and an OAuth client
       - the `cellow.space` domain on Cloudflare DNS (nameservers pointed at Cloudflare), plus a Cloudflare API token that can only edit that zone's DNS
       - a Vercel project linked to `/web`, with `console.cellow.space` and `console-staging.cellow.space` added as domains (`console-staging` is a Preview domain on the `staging` branch; see [Vercel](docs/spec/infrastructure.md#vercel))
       - the release-please GitHub App, its ID and private key stored as repo secrets
       Done when: every account above exists and its values have a home: GitHub `staging` environment or repo secrets, or saved for the Pulumi config in step 6. Generated deploy secrets come in steps 6 and 7. Keys for later features (PostHog, Safe Browsing, Sentry, Mission Control, `INTERNAL_TOKEN`) come in the build steps that use them.
-   6. **Pulumi `staging` stack:** compartment, network, security list (80/443 only), A1 VM with cloud-init, Cloudflare DNS records. A new deploy SSH key pair: the public key goes in the stack config, the private key in the GitHub `staging` secret `KAMAL_SSH_PRIVATE_KEY`.
+   6. **Pulumi `staging` stack:** VPC, security group (80/443 only), instance role, `t4g.small` VM with cloud-init, Cloudflare DNS records, and the `running` flag that stops and starts it. A new deploy SSH key pair: the public key goes in the stack config, the private key in the GitHub `staging` secret `KAMAL_SSH_PRIVATE_KEY`.
       Done when: `ssh deploy@url-shortener-staging` works over Tailscale, `docker ps` runs, and `go-staging.cellow.space` resolves to the VM.
    7. **First Kamal deploy from your laptop:** `deploy.yml` + the `staging` destination, Postgres accessory, Let's Encrypt TLS. `POSTGRES_PASSWORD`, `RAILS_MASTER_KEY` and a GHCR token (`KAMAL_REGISTRY_PASSWORD`) are generated here, referenced from `.kamal/secrets.staging`, and stored in the GitHub `staging` environment.
       Done when: `https://go-staging.cellow.space/up` returns 200 with a valid certificate.
    8. **Vercel staging:** `vercel.json` (automatic deploys from `main` off), `API_ORIGIN` for the Preview environment, then a manual `vercel deploy` + `vercel alias` to `console-staging.cellow.space`.
       Done when: the staging page shows the version coming from the staging API through the rewrite.
    9. **Automate it:** in `pipeline.yml`, the build (arm64 runner → GHCR, tagged with the commit hash), staging deploy (Tailscale → `kamal deploy -d staging`, Vercel CLI deploy + alias) and smoke test jobs.
-      Done when: merging a PR to `main` updates staging on its own, and `/up` reports the new commit hash.
+      Done when: merging a PR to `main` updates a running staging on its own, `/up` reports the new commit hash, and the staging job skips cleanly while staging is stopped.
 2. **Production and the release flow.** The hello-world build goes all the way to production, so the whole pipeline is proven before any features exist:
-   1. **Pulumi `prod` stack:** VM (1 OCPU / 6 GB), backup bucket with the 14-day lifecycle rule, the IAM policy that lets the lifecycle rule run, the `backup-bot` user + S3-style key, and the prod DNS records.
+   1. **Pulumi `prod` stack:** `t4g.small` VM with an Elastic IP, the S3 backup bucket with the 14-day lifecycle rule, write access to it for the instance role, and the prod DNS records.
       Done when: `ssh deploy@url-shortener-prod` works over Tailscale, `go.cellow.space` resolves, and the bucket shows the lifecycle rule.
    2. **Production secrets:**
       - a GitHub `production` environment with you as required reviewer, deploys allowed only from `main`, and its secrets
@@ -89,7 +89,7 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
       Done when: every value in [config](docs/spec/config.md) for production has a home.
    3. **First Kamal deploy to production, from your laptop:** `kamal setup -d production`.
       Done when: `https://go.cellow.space/up` returns 200 with a valid certificate.
-   4. **Backups:** the `backup` accessory (nightly `pg_dump` → Object Storage).
+   4. **Backups:** the `backup` accessory (nightly `pg_dump` → S3, using the instance role).
       Done when: a manual run puts a dump in the bucket, and `pg_restore` of that dump into a local database succeeds.
    5. **release-please:** config files, the manifest at `0.0.0`, `version.txt`, and the release-please job in `pipeline.yml`, using the GitHub App token.
       Done when: after a `feat:` merge, a `chore(main): release 0.1.0` PR appears with a CHANGELOG, and CI runs on it.

@@ -4,13 +4,13 @@ Instructions for coding agents (Codex, Claude Code, others). This file is the so
 
 ## Project
 
-A Bitly-style URL shortener, built as a portfolio project. Everything must run on **free tiers**.
+A Bitly-style URL shortener, built as a portfolio project. Everything runs on **free tiers except the AWS VMs**, which are budgeted at about $20/month.
 
 - **API and redirects:** Rails 8.1 API (`api/`) on Ruby 4.0.10, with PostgreSQL 17, Solid Queue and Solid Cache.
 - **Frontend:** Next.js App Router (`web/`).
 - **Analytics:** PostHog. Click events are captured server-side, and stats come from HogQL queries.
 - **Hosting:**
-  - Rails runs on an Oracle Cloud Always Free VM, deployed with Kamal.
+  - Rails runs on an AWS EC2 `t4g.small` VM in Singapore, deployed with Kamal. Staging is stopped when not in use.
   - Next.js runs on Vercel Hobby.
   - DNS for `cellow.space` is on Cloudflare (free), managed by Pulumi: short links on `go.cellow.space`, the web app on `console.cellow.space`, with `-staging` variants.
   - The infrastructure is created with Pulumi (`infra/`).
@@ -69,7 +69,7 @@ Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brake
 
 ## Hard constraints (from the spec; do not violate)
 
-- **Free tiers only.** Don't add a paid service, a paid plan, or an Oracle resource outside Always Free. The one paid item is the `cellow.space` domain.
+- **Low cost.** The only paid items are the `cellow.space` domain and AWS, which stays within about $20/month: two `t4g.small` VMs (staging stopped when not in use), their disks, the prod Elastic IP and the S3 backup bucket. Don't add another paid service or plan, or an AWS resource that bills while idle (NAT gateway, load balancer, RDS, and so on), without asking.
 - **The redirect path (`GET /:code`) never waits on a third party.** It does one indexed lookup and enqueues `ClickJob`. No PostHog or Safe Browsing call, no session, no write to the `links` row.
 - **No raw IP is stored or logged.** Visitors are identified by `SHA256(ip + user_agent + daily_salt)`.
 - **Rails owns all business logic and auth.** Next.js is the UI: no database access, no auth library.

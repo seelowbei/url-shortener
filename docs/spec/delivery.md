@@ -24,20 +24,20 @@
 
 | | **dev** | **staging** | **production** |
 |---|---|---|---|
-| Where | Your laptop | Oracle VM `url-shortener-staging` (1 OCPU / 4 GB) | Oracle VM `url-shortener-prod` (1 OCPU / 6 GB) |
+| Where | Your laptop | EC2 `url-shortener-staging` (t4g.small, stopped when not in use) | EC2 `url-shortener-prod` (t4g.small) |
 | API | `bin/dev` on `localhost:3000` | `https://go-staging.cellow.space` | `https://go.cellow.space` |
 | Web | `next dev` on `localhost:3001` | `https://console-staging.cellow.space` (Vercel alias on a preview deploy) | `https://console.cellow.space` |
 | Postgres | `docker compose up db` (`postgres:17`) | Kamal accessory | Kamal accessory |
 | `RAILS_ENV` | `development` | `production` | `production` |
 | Analytics | `ANALYTICS_ADAPTER=fake` (PostHog optional) | PostHog, staging project | PostHog, prod project |
 | Data | Seeds | Seeds + backfill, reset any time | Seeds + backfill (demo account), never reset |
-| Backups | – | – | Nightly to Object Storage |
-| Deployed by | – | Every merge to `main` | A published GitHub Release |
+| Backups | – | – | Nightly to S3 |
+| Deployed by | – | Every merge to `main` while it's running, or a manual pipeline run | A published GitHub Release |
 
 - **Staging runs `RAILS_ENV=production`**, so it tests exactly the prod configuration. Only env vars differ. An `APP_ENV=staging|production` variable is used for labels (a "STAGING" banner in the UI) and as the PostHog `environment` property.
 - **PostHog:** one project per environment if your plan allows it. Otherwise one project, with every event carrying an `environment` property and every HogQL query filtering on it.
 - **Safe Browsing:** one API key for both.
-- **Staging idle reclamation:** staging gets little traffic, so Oracle may stop it ([deployment](infrastructure.md#deployment)). That's acceptable for staging: UptimeRobot alerts you, and you start it again in the console or with `pulumi up`.
+- **Staging is for your own testing and is stopped when not in use** (`running: false` in its stack, [deployment](infrastructure.md#aws-ec2-vm-rails)). A cold start of about a minute is fine. UptimeRobot only monitors production.
 
 ### Branching and commits
 - Trunk-based: short-lived feature branches → PR → **squash-merge** to `main`.
@@ -75,10 +75,12 @@ push to main
 ```
 
 **Day to day:**
-1. Merge feature PRs to `main`. Each one deploys to staging automatically, and release-please keeps a single open PR, `chore(main): release X.Y.Z`, with the next version and changelog.
-2. When staging looks good, **merge the release PR.** That push goes through CI → build → staging (the release commit only changes `version.txt` and `CHANGELOG.md`), then release-please creates tag `vX.Y.Z` and the GitHub Release, then the production job waits for your approval and deploys the exact image staging just ran.
+1. Merge feature PRs to `main`. Each one deploys to staging automatically while staging is running, and release-please keeps a single open PR, `chore(main): release X.Y.Z`, with the next version and changelog.
+2. When you want to test, start staging (`running: true` + `pulumi up`) and run the pipeline manually (`workflow_dispatch`) to deploy the latest `main` to it.
+3. When staging looks good, **merge the release PR** while staging is still running. That push goes through CI → build → staging (the release commit only changes `version.txt` and `CHANGELOG.md`), then release-please creates tag `vX.Y.Z` and the GitHub Release, then the production job waits for your approval and deploys the exact image staging just ran.
 
 **Details:**
+- **Staging stopped:** the staging job first checks whether `url-shortener-staging` is online in the tailnet. If it isn't, it skips the deploy and smoke test with a notice, and the run still passes. The production job only runs if the staging job actually deployed and smoke-tested that commit, so a release can't skip staging.
 - **Concurrency:** group `staging` cancels older staging runs that are still going. Group `production` is never cancelled mid-run.
 - **Smoke test:** `GET /up` = 200 with the expected `version`/`sha`, then `POST /api/links` → `GET /:code` = 302 to the right destination. In production the throwaway link is deleted afterwards.
 - **Approval:** the required reviewer on the `production` environment is free for public repos. On a private repo, merging the release PR is the gate.
