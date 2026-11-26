@@ -74,8 +74,9 @@ Rails.application.configure do
   config.active_record.attributes_for_inspect = [ :id ]
 
   # Protect against DNS rebinding and other `Host` header attacks: only the short host
-  # (go.cellow.space, or go-staging.cellow.space on staging) is served.
-  config.hosts = [ ENV["SHORT_HOST"] ].compact
+  # (go.cellow.space, or go-staging.cellow.space on staging) is served. fetch, not [], so a missing
+  # SHORT_HOST stops the app booting (and the deploy's health check) instead of allowing every host.
+  config.hosts = [ ENV.fetch("SHORT_HOST") ]
 
   # kamal-proxy's health check reaches the container by its internal address, not the short host.
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
