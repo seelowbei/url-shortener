@@ -32,7 +32,7 @@ Each stack creates its own copy. Names below carry the stack suffix (`-staging` 
 | Ubuntu image | Canonical's latest Ubuntu 24.04 arm64 image, read from its public SSM parameter `/aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id`. The instance ignores later changes to it (`ignoreChanges: ["ami"]`), so a newer image doesn't replace the VM. |
 | Instance | Graviton, from `instanceType`: **prod `t4g.small`** (2 vCPU, 2 GB), **staging `t4g.micro`** (2 vCPU, 1 GB), gp3 root volume (`volumeSizeGb`, 20 GB), encrypted. IMDSv2 only, with hop limit 2 so containers can use the instance role. `user_data` is the rendered cloud-init. Changes to it are ignored, because cloud-init only runs on first boot. |
 | Public IP | **prod:** an Elastic IP (`elasticIp: true`), fixed for the life of the stack. **staging:** the instance's own public IP, which changes on every start. Pulumi re-reads it after each start. |
-| Start/stop (staging) | `running: false` stops the VM: only its disk is billed, and the short-host record is removed. `running: true` starts it and points the record at the new IP. Prod always runs. |
+| Start/stop (staging) | `running: false` stops the VM: only its disk is billed, and the short-host record is removed. `running: true` starts it and points the record at the new IP. Prod always runs. `Pulumi.staging.yaml` commits `running: "false"`, so a plain `pulumi up` leaves staging stopped. The environment variable `STAGING_RUNNING=true\|false` overrides it (staging stack only), which is how `pnpm staging:start` / `staging:stop` switch it without editing a committed file. |
 | Backup bucket | **prod only** (build step 2.1): S3 bucket `url-shortener-backups-<account-id>`, private, encrypted, with a lifecycle rule deleting objects after 14 days. The instance role may only put/list/get objects in it. Staging data is disposable seed data, so it has no backups. |
 | DNS records | Cloudflare provider, in the `cellow.space` zone (`cloudflareZoneId`): an A record for `shortHost` → the public IP (TTL 60 s, since staging's changes), and a CNAME for `appHost` → the target Vercel shows for that domain (`vercelCname`). Both are DNS only (not proxied), so kamal-proxy gets its own Let's Encrypt certificate and redirects never pass through Cloudflare. |
 
@@ -55,7 +55,9 @@ Each stack creates its own copy. Names below carry the stack suffix (`-staging` 
 ```
 cd infra && pulumi up -s staging                       # create or update infrastructure (staging first)
 pulumi up -s prod                                      # then prod
-pulumi config set -s staging running false && pulumi up -s staging   # stop staging (start: running true)
+pnpm staging:start                                     # start staging, wait for /up, run the pipeline on main
+pnpm staging:stop                                      # stop staging (STAGING_RUNNING=false pulumi up -s staging)
+STAGING_RUNNING=true pulumi preview -s staging         # preview while staging is running (otherwise it shows a stop)
 pulumi up -s prod --replace <instance-urn>             # rebuild the VM (restore drill)
 pulumi config set -s prod availabilityZoneIndex 1 && pulumi up -s prod   # insufficient-capacity retry
 ```
@@ -67,7 +69,7 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 - **Type:** prod `t4g.small` (2 GB RAM), staging `t4g.micro` (1 GB RAM, enough for testing with the 2 GB swap). Both are ARM64 Graviton with 2 vCPU, running Ubuntu 24.04 arm64 in `ap-southeast-1`.
 - **Cost:** about $18/month for prod (instance about $12.30, public IPv4 $3.60, 20 GB gp3 about $2). Staging costs about $2/month while stopped (disk only), plus about 1.3 cents per hour running. Check the figures in the AWS Pricing Calculator. The $100 of new-account credits covers roughly the first five months.
 - **Ports 80/443** are opened by the security group only. Ubuntu's AWS image has no host firewall rules to change.
-- **Staging is stopped when not in use** (`running: false`). Starting it takes about a minute, plus `pulumi up` to update the DNS record. The data on its disk survives a stop.
+- **Staging is stopped when not in use** (`running: false`). `pnpm staging:start` (from `infra/`) runs `pulumi up` with `STAGING_RUNNING=true`, waits up to 5 minutes for `/up` (on the new IP directly, since local DNS may still cache the removed record), then runs the pipeline on `main` (`workflow_dispatch`) to deploy what was merged while it was stopped. `pnpm staging:stop` stops it. The data on its disk survives a stop.
 - **SSH:** only over Tailscale, key-only login, as the `deploy` user.
 
 ### Kamal

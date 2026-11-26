@@ -76,7 +76,7 @@ push to main
 
 **Day to day:**
 1. Merge feature PRs to `main`. Each one deploys to staging automatically while staging is running, and release-please keeps a single open PR, `chore(main): release X.Y.Z`, with the next version and changelog.
-2. When you want to test, start staging (`running: true` + `pulumi up`) and run the pipeline manually (`workflow_dispatch`) to deploy the latest `main` to it.
+2. When you want to test, run `pnpm staging:start` in `infra/`. It starts staging, waits for `/up`, then runs the pipeline manually (`workflow_dispatch`) to deploy the latest `main` to it. Run `pnpm staging:stop` when you're done.
 3. When staging looks good, **merge the release PR** while staging is still running. That push goes through CI → build → staging (the release commit only changes `version.txt` and `CHANGELOG.md`), then release-please creates tag `vX.Y.Z` and the GitHub Release, then the production job waits for your approval and deploys the exact image staging just ran.
 
 **Details:**
