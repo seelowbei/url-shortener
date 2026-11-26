@@ -4,13 +4,16 @@
 
 Values differ per environment ([environments and release flow](delivery.md#environments-and-release-flow)). The API gets them from Kamal destination secrets (`.kamal/secrets.staging`, `.kamal/secrets.production`) that read from GitHub Environment secrets. The web app gets them from Vercel environment variables. The same Docker image runs in staging and production, so nothing environment-specific is baked into the image.
 
+**Every API secret is a per-environment env var.** The app has no Rails encrypted credentials file and no `RAILS_MASTER_KEY`. Both staging and prod run `RAILS_ENV=production`, so a shared credentials file couldn't give them different secrets. To add a secret: set it in each GitHub environment, reference it in `.kamal/secrets.<destination>`, and list it under `env.secret` in `config/deploy.yml`. Staging and production never share a secret value.
+
 | Var | Where |
 |---|---|
 | `DATABASE_URL` (`postgres://…@url-shortener-db:5432/…`, Docker network only) | api |
 | `POSTGRES_PASSWORD` | api (Kamal secret, shared by the accessory and the app) |
 | `OCI_BUCKET`, OCI S3-compatible access keys | backup container |
 | `SHORT_HOST` (`go.cellow.space`; staging `go-staging.cellow.space`), `APP_ORIGIN` (`https://console.cellow.space`; staging `https://console-staging.cellow.space`) | api |
-| `RAILS_MASTER_KEY`, `KAMAL_REGISTRY_PASSWORD` | api (Kamal secrets / GitHub Actions secrets) |
+| `SECRET_KEY_BASE` (different per environment, from `bin/rails secret`; signs cookies and seeds the visitor-hash salt) | api (Kamal secret, GitHub environment secret) |
+| `KAMAL_REGISTRY_PASSWORD` (GHCR token, `write:packages`) | api (Kamal secret / GitHub Actions secret) |
 | `INTERNAL_TOKEN` | api + GitHub Actions (for scheduled maintenance calls) |
 | `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST` | api (capture) |
 | `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_PROJECT_ID` | api (query, never sent to the browser) |
