@@ -34,4 +34,5 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `KAMAL_SSH_PRIVATE_KEY` | GitHub Actions (deploy user's key) |
 | `RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY` | GitHub Actions (GitHub App used by release-please) |
 | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | GitHub Actions (Vercel CLI deploys) |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` (Vercel's Protection Bypass for Automation, sent as the `x-vercel-protection-bypass` header) | GitHub Actions `staging` environment (Playwright against `console-staging`, [Vercel](infrastructure.md#vercel)) |
 | `APP_VERSION`, `GIT_SHA` | api + web (build args, from `version.txt` and the commit) |
