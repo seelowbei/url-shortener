@@ -75,7 +75,7 @@ Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brake
 - **Rails owns all business logic and auth.** Next.js is the UI: no database access, no auth library.
 - **The same Docker image runs in staging and production.** Nothing environment-specific is baked into the image; config comes from environment variables.
 - **Database migrations must be backward compatible** (expand → deploy → contract), because Kamal runs old and new containers side by side and a rollback runs old code against the new schema.
-- **Secrets never live in the repo.** Kamal reads them from `.kamal/secrets.<destination>` references, and those resolve from GitHub Environment secrets.
+- **Secrets never live in the repo.** Kamal reads them from `.kamal/secrets.<destination>` references, and those resolve from GitHub Environment secrets. The one exception is Pulumi config secrets: they're committed in `infra/Pulumi.<stack>.yaml` only as `secure:` ciphertext, encrypted by Pulumi Cloud. Never commit them in plain text, and never run `pulumi config --show-secrets`.
 
 ## Conventions
 
