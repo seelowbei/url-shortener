@@ -4,20 +4,20 @@ Instructions for coding agents (Codex, Claude Code, others). This file is the so
 
 ## Project
 
-A Bitly-style URL shortener, built as a portfolio project. Everything must run on **free tiers**.
+A Bitly-style URL shortener, built as a portfolio project. Everything runs on **free tiers except the AWS VMs**, which are budgeted at about $20/month.
 
 - **API and redirects:** Rails 8.1 API (`api/`) on Ruby 4.0.10, with PostgreSQL 17, Solid Queue and Solid Cache.
 - **Frontend:** Next.js App Router (`web/`).
 - **Analytics:** PostHog. Click events are captured server-side, and stats come from HogQL queries.
 - **Hosting:**
-  - Rails runs on an Oracle Cloud Always Free VM, deployed with Kamal.
+  - Rails runs on AWS EC2 in Singapore (prod `t4g.small`, staging `t4g.micro`), deployed with Kamal. Staging is stopped when not in use.
   - Next.js runs on Vercel Hobby.
   - DNS for `cellow.space` is on Cloudflare (free), managed by Pulumi: short links on `go.cellow.space`, the web app on `console.cellow.space`, with `-staging` variants.
   - The infrastructure is created with Pulumi (`infra/`).
 
 The design lives in `SPEC.md` (overview and build order) and `docs/spec/*.md` (details). Read the relevant doc before implementing anything. If the code and the spec disagree, stop and ask rather than silently picking one. When the user changes a decision, update the spec in the same PR.
 
-**Status:** build steps 1.1 (repo and branch protection), 1.2 (Rails skeleton), 1.3 (Next.js skeleton), 1.4 (CI) and 1.5 (accounts and prerequisites) are done. Next is step 1.6 (Pulumi `staging` stack). Do not start later build steps unless asked.
+**Status:** build steps 1.1 (repo and branch protection), 1.2 (Rails skeleton), 1.3 (Next.js skeleton), 1.4 (CI), 1.5 (accounts and prerequisites) and 1.6 (Pulumi `staging` stack on AWS) are done. Next is step 1.7 (first Kamal deploy from the laptop). Do not start later build steps unless asked.
 
 ## Layout
 
@@ -26,9 +26,9 @@ SPEC.md              overview, architecture, build order
 docs/spec/           product, api, backend, frontend, infrastructure, delivery, config
 api/                 Rails 8.1 API (+ Kamal config in api/config/deploy*.yml, api/.kamal/)
 web/                 Next.js app (pnpm, Node 26; has its own AGENTS.md for Next.js docs)
-infra/               Pulumi TypeScript program (build step 1.6)
+infra/               Pulumi TypeScript program (pnpm, Node 26); run from your laptop only
 docker-compose.yml   dev Postgres 17 on localhost:5433
-.github/workflows/   CI: ci.yml (api, web jobs) and pr-title.yml; all three are required checks on main
+.github/workflows/   CI: ci.yml (api, web, infra jobs) and pr-title.yml; all are required checks on main
 .claude/hooks/       agent safety hooks, shared by Claude Code and Codex
 ```
 
@@ -56,6 +56,12 @@ pnpm test                               # Vitest
 pnpm format:check                       # Prettier; `pnpm format` to fix
 pnpm build                              # production build
 
+cd infra
+pnpm install
+pnpm typecheck                          # tsc --noEmit (the only check CI runs, with format:check)
+pnpm format:check                       # Prettier
+pulumi preview -s staging               # needs the user's local OCI config; applying is the user's job
+
 node --test ".claude/hooks/*.test.mjs"  # hook tests (from the repo root)
 ```
 
@@ -63,13 +69,13 @@ Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brake
 
 ## Hard constraints (from the spec; do not violate)
 
-- **Free tiers only.** Don't add a paid service, a paid plan, or an Oracle resource outside Always Free. The one paid item is the `cellow.space` domain.
+- **Low cost.** The only paid items are the `cellow.space` domain and AWS, which stays within about $20/month: a prod `t4g.small` and a staging `t4g.micro` (stopped when not in use), their disks, the prod Elastic IP and the S3 backup bucket. Don't add another paid service or plan, or an AWS resource that bills while idle (NAT gateway, load balancer, RDS, and so on), without asking.
 - **The redirect path (`GET /:code`) never waits on a third party.** It does one indexed lookup and enqueues `ClickJob`. No PostHog or Safe Browsing call, no session, no write to the `links` row.
 - **No raw IP is stored or logged.** Visitors are identified by `SHA256(ip + user_agent + daily_salt)`.
 - **Rails owns all business logic and auth.** Next.js is the UI: no database access, no auth library.
 - **The same Docker image runs in staging and production.** Nothing environment-specific is baked into the image; config comes from environment variables.
 - **Database migrations must be backward compatible** (expand → deploy → contract), because Kamal runs old and new containers side by side and a rollback runs old code against the new schema.
-- **Secrets never live in the repo.** Kamal reads them from `.kamal/secrets.<destination>` references, and those resolve from GitHub Environment secrets.
+- **Secrets never live in the repo.** Kamal reads them from `.kamal/secrets.<destination>` references, and those resolve from GitHub Environment secrets. The one exception is Pulumi config secrets: they're committed in `infra/Pulumi.<stack>.yaml` only as `secure:` ciphertext, encrypted by Pulumi Cloud. Never commit them in plain text, and never run `pulumi config --show-secrets`.
 
 ## Conventions
 

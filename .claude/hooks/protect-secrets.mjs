@@ -8,7 +8,7 @@
 // Protected files (by basename):
 //   .env, .env.*                 local environment files
 //   *.key                        config/master.key, config/credentials/*.key
-//   *.pem                        private keys (e.g. the Oracle API signing key)
+//   *.pem                        private keys
 // Committed templates stay allowed: `*.example` and `*.sample` (e.g. .env.sample).
 //
 // Protected in shell commands:

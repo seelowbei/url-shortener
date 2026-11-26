@@ -1,0 +1,46 @@
+name: url-shortener
+description: AWS EC2 VM, network and Cloudflare DNS for the URL shortener (see docs/spec/infrastructure.md)
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+config:
+  # Also required, set per stack: aws:region (committed), aws:profile (local AWS CLI profile),
+  # cloudflare:apiToken (secret).
+  instanceType:
+    type: string
+    description: EC2 instance type, arm64 Graviton (e.g. t4g.small)
+  volumeSizeGb:
+    type: integer
+    description: Root gp3 volume size in GB
+  availabilityZoneIndex:
+    type: integer
+    default: 0
+    description: Which availability zone (sorted by name) to use; change it if the instance type has no capacity
+  elasticIp:
+    type: boolean
+    default: false
+    description: Give the VM a fixed Elastic IP (prod). Without it the public IP changes on every start (staging)
+  running:
+    type: boolean
+    default: true
+    description: Staging only. false stops the VM (only its disk is billed) and removes the short-host DNS record
+  sshPublicKey:
+    type: string
+    description: Deploy SSH public key, authorized for the deploy user
+  tailscaleAuthKey:
+    type: string
+    secret: true
+    description: Single-use, pre-approved, tag:server Tailscale auth key (expires in 1 day); read on first boot only
+  cloudflareZoneId:
+    type: string
+    description: Cloudflare zone ID for cellow.space
+  shortHost:
+    type: string
+    description: Short-link host, an A record to the VM (e.g. go-staging.cellow.space)
+  appHost:
+    type: string
+    description: Web app host, a CNAME to Vercel (e.g. console-staging.cellow.space)
+  vercelCname:
+    type: string
+    description: CNAME target Vercel shows for appHost
