@@ -16,7 +16,7 @@
 - `api`: Postgres service → `rubocop`, `brakeman`, `bundle-audit`, `rspec`, then `rswag:specs:swaggerize` and fail if `openapi.yaml` differs from the committed file
 - `web`: `lint`, regenerate the API types and fail if they differ from the committed file, `typecheck`, `vitest`, `build`
 - `e2e`: Docker Compose (Rails + Postgres, `ANALYTICS_ADAPTER=fake`) + `next start` → Playwright
-- The pipeline's staging smoke test ([environments and release flow](#environments-and-release-flow)) also runs the Playwright happy path against staging.
+- The pipeline's staging smoke test ([environments and release flow](#environments-and-release-flow)) also runs the Playwright happy path against staging, sending the Vercel protection bypass header ([Vercel](infrastructure.md#vercel)).
 
 ## Environments and release flow
 
@@ -43,7 +43,7 @@
 - Trunk-based: short-lived feature branches → PR → **squash-merge** to `main`.
 - **Conventional Commits:** the PR title becomes the squash commit message, so CI checks PR titles (`amannn/action-semantic-pull-request`): `feat:`, `fix:`, `perf:`, `refactor:`, `docs:`, `test:`, `ci:`, `chore:`, with optional scope (`feat(api):`, `fix(web):`). `!` or a `BREAKING CHANGE:` footer marks a major bump.
 - `main` is protected: CI and the PR-title check must pass, squash only, no direct pushes.
-- PRs get a Vercel preview whose API is staging (fine for UI review; the preview has its own domain, so its login cookie is separate).
+- PRs get a Vercel preview whose API is staging (fine for UI review; the preview has its own domain, so its login cookie is separate). Previews sit behind Vercel Authentication, so only signed-in team members can open them.
 
 ### Versioning (release-please)
 - **One version for the whole product** (API + web ship together). Root-level release-please config:

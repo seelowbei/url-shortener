@@ -110,7 +110,8 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 - Next.js on the Hobby plan, one Vercel project from `/web`, with the custom domains `console.cellow.space` (production) and `console-staging.cellow.space` (staging alias). Custom domains are free on Hobby.
 - Vercel only links a Preview domain to an existing Git branch, so `console-staging.cellow.space` is linked to a `staging` branch that **nobody pushes to**. The domain only moves when the pipeline runs `vercel alias`. Pushing to `staging` would hand the staging domain to that preview.
 - **The Git integration only builds PR previews.** `vercel.json` turns off automatic deploys from `main` (`"git": {"deploymentEnabled": {"main": false}}`). Staging and production web deploys run from GitHub Actions with the Vercel CLI, so the web app and the API always ship together ([environments and release flow](delivery.md#environments-and-release-flow)).
-- `API_ORIGIN` env var for the rewrites: the Vercel *Preview* environment points at the staging API, *Production* at the prod API.
+- `API_ORIGIN` env var for the rewrites: the Vercel *Preview* environment points at the staging API, *Production* at the prod API. The rewrites read it at build time, so changing it needs a redeploy.
+- **Deployment Protection stays on** (Vercel Authentication, standard protection). PR previews and `console-staging.cellow.space` redirect to a Vercel login, because they write to the staging API; only `console.cellow.space` is public. Automated checks against staging (the Playwright happy path in the pipeline) send the *Protection Bypass for Automation* secret in the `x-vercel-protection-bypass` header. The bypass is free on Hobby.
 
 ### Pipeline (GitHub Actions)
 - `ci.yml`: tests ([testing and CI](delivery.md#testing-and-ci)) and the Conventional Commits PR-title check on every PR, plus `tsc --noEmit` for `/infra`.
