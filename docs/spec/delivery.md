@@ -12,7 +12,7 @@
 
 **Web (`/web`):** ESLint, `tsc --noEmit`, Vitest + React Testing Library + MSW (mock handlers typed from the OpenAPI types) for components and hooks, and one Playwright happy path: shorten → sign up → dashboard → link stats.
 
-**GitHub Actions** (`ci.yml`), on push and PR:
+**GitHub Actions** (`ci.yml`), on every PR, and on `main` as the first job of `pipeline.yml` (`workflow_call`, so a push isn't tested twice):
 - `api`: Postgres service → `rubocop`, `brakeman`, `bundle-audit`, `rspec`, then `rswag:specs:swaggerize` and fail if `openapi.yaml` differs from the committed file
 - `web`: `lint`, regenerate the API types and fail if they differ from the committed file, `typecheck`, `vitest`, `build`
 - `e2e`: Docker Compose (Rails + Postgres, `ANALYTICS_ADAPTER=fake`) + `next start` → Playwright
@@ -59,7 +59,7 @@ One workflow chains every step, so production only gets a commit that already pa
 
 ```
 push to main
-  └─ ci            tests, lint, PR-title rules (same as ci.yml)
+  └─ ci            tests and lint (calls ci.yml)
       └─ build     arm64 image, tagged <sha>, pushed to GHCR (once)
           └─ staging      kamal deploy -d staging --skip-push --version=<sha>
                           vercel deploy (preview env) → alias console-staging.cellow.space
@@ -81,8 +81,8 @@ push to main
 
 **Details:**
 - **Staging stopped:** the staging job first checks whether `url-shortener-staging` is online in the tailnet. If it isn't, it skips the deploy and smoke test with a notice, and the run still passes. The production job only runs if the staging job actually deployed and smoke-tested that commit, so a release can't skip staging.
-- **Concurrency:** group `staging` cancels older staging runs that are still going. Group `production` is never cancelled mid-run.
-- **Smoke test:** `GET /up` = 200 with the expected `version`/`sha`, then `POST /api/links` → `GET /:code` = 302 to the right destination. In production the throwaway link is deleted afterwards.
+- **Concurrency:** group `staging` queues runs instead of cancelling one mid-deploy (that would leave the Kamal deploy lock held). GitHub keeps only the newest pending run, so in-between commits are skipped. Group `production` is never cancelled mid-run.
+- **Smoke test:** `GET /up` = 200 with the expected `version`/`sha`, the same through the web app's rewrite (`/api/health` on the web host, with the Vercel protection bypass header in staging), then `POST /api/links` → `GET /:code` = 302 to the right destination. In production the throwaway link is deleted afterwards. Until the links endpoints exist, it checks only `/up` and `/api/health`.
 - **Approval:** the required reviewer on the `production` environment is free for public repos. On a private repo, merging the release PR is the gate.
 
 ### Rollback
