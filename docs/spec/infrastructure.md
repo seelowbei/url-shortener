@@ -30,7 +30,7 @@ Each stack creates its own copy. Names below carry the stack suffix (`-staging` 
 | Security group | Ingress TCP **80, 443** from anywhere. **No port 22** (SSH goes over Tailscale). Egress: everything. |
 | Instance role | IAM role + instance profile with `AmazonSSMManagedInstanceCore`, so SSM Session Manager works as emergency shell access without an open port. Prod adds write access to the backup bucket ([backups](#backups)). |
 | Ubuntu image | `resolve:ssm:/aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id`: Canonical's latest Ubuntu 24.04 arm64 image, resolved by EC2 at launch, so a newer image never replaces the VM. |
-| Instance | Graviton **`t4g.small`** (2 vCPU, 2 GB) for both stacks (`instanceType`), gp3 root volume (`volumeSizeGb`, 20 GB), encrypted. IMDSv2 only, with hop limit 2 so containers can use the instance role. `user_data` is the rendered cloud-init. Changes to it are ignored, because cloud-init only runs on first boot. |
+| Instance | Graviton, from `instanceType`: **prod `t4g.small`** (2 vCPU, 2 GB), **staging `t4g.micro`** (2 vCPU, 1 GB), gp3 root volume (`volumeSizeGb`, 20 GB), encrypted. IMDSv2 only, with hop limit 2 so containers can use the instance role. `user_data` is the rendered cloud-init. Changes to it are ignored, because cloud-init only runs on first boot. |
 | Public IP | **prod:** an Elastic IP (`elasticIp: true`), fixed for the life of the stack. **staging:** the instance's own public IP, which changes on every start. Pulumi re-reads it after each start. |
 | Start/stop (staging) | `running: false` stops the VM: only its disk is billed, and the short-host record is removed. `running: true` starts it and points the record at the new IP. Prod always runs. |
 | Backup bucket | **prod only** (build step 2.1): S3 bucket `url-shortener-backups-<account-id>`, private, encrypted, with a lifecycle rule deleting objects after 14 days. The instance role may only put/list/get objects in it. Staging data is disposable seed data, so it has no backups. |
@@ -64,8 +64,8 @@ pulumi config set -s prod availabilityZoneIndex 1 && pulumi up -s prod   # insuf
 
 ### AWS EC2 VM (Rails)
 Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
-- **Type:** `t4g.small` (ARM64 Graviton, 2 vCPU, 2 GB RAM), Ubuntu 24.04 arm64, in `ap-southeast-1`.
-- **Cost:** about $18/month for prod (instance about $12.30, public IPv4 $3.60, 20 GB gp3 about $2). Staging costs about $2/month while stopped (disk only), plus about 2 cents per hour running. Check the figures in the AWS Pricing Calculator. The $100 of new-account credits covers roughly the first five months.
+- **Type:** prod `t4g.small` (2 GB RAM), staging `t4g.micro` (1 GB RAM, enough for testing with the 2 GB swap). Both are ARM64 Graviton with 2 vCPU, running Ubuntu 24.04 arm64 in `ap-southeast-1`.
+- **Cost:** about $18/month for prod (instance about $12.30, public IPv4 $3.60, 20 GB gp3 about $2). Staging costs about $2/month while stopped (disk only), plus about 1.3 cents per hour running. Check the figures in the AWS Pricing Calculator. The $100 of new-account credits covers roughly the first five months.
 - **Ports 80/443** are opened by the security group only. Ubuntu's AWS image has no host firewall rules to change.
 - **Staging is stopped when not in use** (`running: false`). Starting it takes about a minute, plus `pulumi up` to update the DNS record. The data on its disk survives a stop.
 - **SSH:** only over Tailscale, key-only login, as the `deploy` user.
@@ -95,7 +95,7 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 - `postgres:17` accessory in `config/deploy.yml`, data on a host volume (`/var/lib/url-shortener/postgres`) on the VM's root volume.
 - **Not exposed publicly:** no published port (or bound to `127.0.0.1` only). The app reaches it by container name on the Kamal Docker network. Port 5432 stays closed in the security group.
 - One database server holds the primary, Solid Queue and Solid Cache databases (Rails 8 multi-database config). Solid Cache is capped (`max_size: 256.megabytes`), and Solid Queue clears finished jobs.
-- Tuning for a 2 GB VM shared with Rails: `shared_buffers=256MB`, `max_connections=30`.
+- Tuning for a VM shared with Rails: `max_connections=30`, plus `shared_buffers=256MB` on prod (2 GB) and `128MB` on staging (1 GB).
 - **Local access:** an SSH tunnel (`ssh -L 5433:127.0.0.1:5432 …`, with the port bound to localhost on the VM) for seeds, the click backfill and debugging from your laptop.
 - Upgrades: pin the major version and change it on purpose, with dump → restore. Never `latest`.
 

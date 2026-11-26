@@ -10,7 +10,7 @@ A Bitly-style URL shortener, built as a portfolio project. Everything runs on **
 - **Frontend:** Next.js App Router (`web/`).
 - **Analytics:** PostHog. Click events are captured server-side, and stats come from HogQL queries.
 - **Hosting:**
-  - Rails runs on an AWS EC2 `t4g.small` VM in Singapore, deployed with Kamal. Staging is stopped when not in use.
+  - Rails runs on AWS EC2 in Singapore (prod `t4g.small`, staging `t4g.micro`), deployed with Kamal. Staging is stopped when not in use.
   - Next.js runs on Vercel Hobby.
   - DNS for `cellow.space` is on Cloudflare (free), managed by Pulumi: short links on `go.cellow.space`, the web app on `console.cellow.space`, with `-staging` variants.
   - The infrastructure is created with Pulumi (`infra/`).
@@ -69,7 +69,7 @@ Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brake
 
 ## Hard constraints (from the spec; do not violate)
 
-- **Low cost.** The only paid items are the `cellow.space` domain and AWS, which stays within about $20/month: two `t4g.small` VMs (staging stopped when not in use), their disks, the prod Elastic IP and the S3 backup bucket. Don't add another paid service or plan, or an AWS resource that bills while idle (NAT gateway, load balancer, RDS, and so on), without asking.
+- **Low cost.** The only paid items are the `cellow.space` domain and AWS, which stays within about $20/month: a prod `t4g.small` and a staging `t4g.micro` (stopped when not in use), their disks, the prod Elastic IP and the S3 backup bucket. Don't add another paid service or plan, or an AWS resource that bills while idle (NAT gateway, load balancer, RDS, and so on), without asking.
 - **The redirect path (`GET /:code`) never waits on a third party.** It does one indexed lookup and enqueues `ClickJob`. No PostHog or Safe Browsing call, no session, no write to the `links` row.
 - **No raw IP is stored or logged.** Visitors are identified by `SHA256(ip + user_agent + daily_salt)`.
 - **Rails owns all business logic and auth.** Next.js is the UI: no database access, no auth library.

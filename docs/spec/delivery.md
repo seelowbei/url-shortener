@@ -24,7 +24,7 @@
 
 | | **dev** | **staging** | **production** |
 |---|---|---|---|
-| Where | Your laptop | EC2 `url-shortener-staging` (t4g.small, stopped when not in use) | EC2 `url-shortener-prod` (t4g.small) |
+| Where | Your laptop | EC2 `url-shortener-staging` (t4g.micro, stopped when not in use) | EC2 `url-shortener-prod` (t4g.small) |
 | API | `bin/dev` on `localhost:3000` | `https://go-staging.cellow.space` | `https://go.cellow.space` |
 | Web | `next dev` on `localhost:3001` | `https://console-staging.cellow.space` (Vercel alias on a preview deploy) | `https://console.cellow.space` |
 | Postgres | `docker compose up db` (`postgres:17`) | Kamal accessory | Kamal accessory |

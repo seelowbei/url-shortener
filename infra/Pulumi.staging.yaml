@@ -2,7 +2,7 @@
 # `pulumi config set` (see infra/README.md); Pulumi Cloud encrypts the secret values.
 config:
   aws:region: ap-southeast-1
-  url-shortener:instanceType: t4g.small
+  url-shortener:instanceType: t4g.micro
   url-shortener:volumeSizeGb: 20
   url-shortener:availabilityZoneIndex: 0
   url-shortener:elasticIp: false
