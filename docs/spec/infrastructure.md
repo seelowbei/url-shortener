@@ -14,7 +14,7 @@ Three layers, each with one owner:
 
 ### State and auth
 - **State:** Pulumi Cloud, individual free plan (confirm it's still free). **Two stacks, `staging` and `prod`**, from the same code with different config ([environments and release flow](delivery.md#environments-and-release-flow)). Infra changes go to `staging` first. Secrets in the state are encrypted by Pulumi Cloud.
-- **AWS auth:** an AWS CLI profile on your laptop (IAM Identity Center/SSO recommended), named in the stack config as `aws:profile`. AWS credentials never go in the repo or the Pulumi config. Region: `ap-southeast-1` (Singapore).
+- **AWS auth:** resources live in a workload account of your AWS Organization (not the management account), and the stack config pins it in `aws:allowedAccountIds`. You sign in through IAM Identity Center (`aws sso login`) with an AWS CLI profile named in the stack config as `aws:profile`. AWS credentials never go in the repo or the Pulumi config. Region: `ap-southeast-1` (Singapore).
 - **Cloudflare auth:** an API token with only *Zone → DNS → Edit* on the `cellow.space` zone, stored as the Pulumi secret `cloudflare:apiToken`.
 - **`pulumi up` runs only from your laptop.** CI never holds AWS credentials and only type-checks `/infra` (`tsc --noEmit`).
 - **Cost guardrails:** the account is on the AWS Paid plan with an AWS Budgets alert at **$20/month**. The design adds nothing that bills while idle beyond the disks and the prod Elastic IP: no NAT gateway, load balancer, RDS or CloudWatch extras. T4g instances use `standard` CPU credits, so CPU bursts are never billed.
