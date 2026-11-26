@@ -1,10 +1,10 @@
 # Lint, test and build both apps, and type-check the Pulumi program. All jobs are required checks on main.
+# On main it runs as the first job of pipeline.yml (workflow_call), so a push isn't tested twice.
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
