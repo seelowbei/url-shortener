@@ -44,5 +44,14 @@ module Api
     # The host short links are served on (go.cellow.space in production). Links may not point at it,
     # so a short link can never redirect to another short link. production.rb requires SHORT_HOST.
     config.x.short_host = ENV.fetch("SHORT_HOST", "localhost")
+    # Base of the short URLs the API returns. Dev serves redirects from Puma on port 3000;
+    # production.rb switches to https on the short host.
+    config.x.short_url_base = "http://#{config.x.short_host}:3000"
+
+    # Origins allowed to make state-changing /api requests (the CSRF check in Api::BaseController).
+    # Comma-separated; an entry may use `*` for one DNS label (Vercel preview URLs). Dev defaults to
+    # the Next.js dev server; production.rb requires ALLOWED_ORIGINS.
+    config.x.allowed_origins = ENV.fetch("ALLOWED_ORIGINS", "http://localhost:3001")
+      .split(",").map(&:strip).compact_blank
   end
 end
