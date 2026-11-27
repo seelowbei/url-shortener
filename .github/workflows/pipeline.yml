@@ -77,6 +77,10 @@ jobs:
     concurrency:
       group: staging
       cancel-in-progress: false
+    # "true" only when staging was online, so this job deployed and smoke-tested the commit
+    # (any failure fails the job). The production job requires it.
+    outputs:
+      deployed: ${{ steps.staging.outputs.online }}
     env:
       SSH_AUTH_SOCK: /tmp/ssh-agent.sock
     steps:
