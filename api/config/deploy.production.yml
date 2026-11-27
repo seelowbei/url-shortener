@@ -11,6 +11,7 @@ env:
   clear:
     APP_ENV: production
     SHORT_HOST: go.cellow.space
+    ALLOWED_ORIGINS: https://console.cellow.space
 
 accessories:
   db:

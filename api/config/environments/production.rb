@@ -78,6 +78,11 @@ Rails.application.configure do
   # SHORT_HOST stops the app booting (and the deploy's health check) instead of allowing every host.
   config.x.short_host = ENV.fetch("SHORT_HOST")
   config.hosts = [ config.x.short_host ]
+  config.x.short_url_base = "https://#{config.x.short_host}"
+
+  # The web app's origin(s), checked on POST/PATCH/DELETE /api requests. fetch, so a missing value
+  # fails the boot rather than rejecting every write.
+  config.x.allowed_origins = ENV.fetch("ALLOWED_ORIGINS").split(",").map(&:strip).compact_blank
 
   # kamal-proxy's health check reaches the container by its internal address, not the short host.
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }

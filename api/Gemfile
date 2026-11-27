@@ -30,6 +30,9 @@ gem "thruster", require: false
 gem "sentry-ruby", "~> 7.3"
 gem "sentry-rails", "~> 7.3"
 
+# JSON serializers (app/serializers)
+gem "alba"
+
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"
 
@@ -48,4 +51,6 @@ group :development, :test do
 
   # Testing
   gem "rspec-rails"
+  # Request specs that generate swagger/v1/openapi.yaml (rswag:specs:swaggerize)
+  gem "rswag-specs"
 end

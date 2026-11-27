@@ -11,6 +11,7 @@ env:
   clear:
     APP_ENV: staging
     SHORT_HOST: go-staging.cellow.space
+    ALLOWED_ORIGINS: https://console-staging.cellow.space
 
 accessories:
   db:
