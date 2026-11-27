@@ -47,7 +47,7 @@
 
 ### Versioning (release-please)
 - **One version for the whole product** (API + web ship together). Root-level release-please config:
-  - `release-please-config.json`: one package at `.`, `release-type: simple`, `bump-minor-pre-major: true` (while on 0.x, `feat` bumps minor and breaking changes bump minor), `initial-version: "0.1.0"`, changelog sections for Features / Bug Fixes / Performance.
+  - `release-please-config.json`: one package at `.`, `release-type: simple`, `bump-minor-pre-major: true` (while on 0.x, `feat` bumps minor and breaking changes bump minor), `initial-version: "0.1.0"`, changelog sections for Features / Bug Fixes / Performance. Top-level `always-update: true`: by default release-please only refreshes the release PR when its release notes change, so a `ci:`/`docs:`/`chore:` merge would leave it behind `main`, and branch protection requires PRs to be up to date. With it, every pipeline run rebuilds the release PR on the latest `main`, which also re-runs its CI.
   - `.release-please-manifest.json`: `{ ".": "0.0.0" }`. With no earlier release tag, release-please ignores this version and proposes `initial-version` (default `1.0.0`), so `initial-version` is what makes the first release PR `0.1.0`.
   - `version.txt` (bumped by release-please) and `CHANGELOG.md` (generated).
 - The version is passed into the image as a build arg (`APP_VERSION`, along with `GIT_SHA`). `GET /up` returns `{version, sha}`, and the web footer shows the version, so you can always tell what's running where.
