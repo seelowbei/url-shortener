@@ -34,11 +34,20 @@ class Api::BaseController < ApplicationController
       render json: { error: { code:, message:, fields: } }, status:
     end
 
-    def render_invalid(record)
+    # A failed service Result whose value is the record carrying the errors.
+    def render_failure(result)
+      case result.error
+      when :invalid then render_invalid(result.value)
+      when :alias_taken then render_invalid(result.value, code: "alias_taken", message: "Alias is already taken")
+      else raise ArgumentError, "unhandled Result error: #{result.error.inspect}"
+      end
+    end
+
+    def render_invalid(record, code: "validation_failed", message: "Validation failed")
       fields = record.errors.group_by_attribute.to_h do |attribute, errors|
         [ API_FIELD_NAMES.fetch(attribute, attribute), errors.map(&:message) ]
       end
-      render_error :unprocessable_content, "validation_failed", "Validation failed", fields:
+      render_error :unprocessable_content, code, message, fields:
     end
 
     def verify_origin
