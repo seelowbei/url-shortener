@@ -49,6 +49,7 @@ env:
   secret:
     - SECRET_KEY_BASE
     - POSTGRES_PASSWORD
+    - SENTRY_DSN
 
 # Postgres on the same VM. The app reaches it as url-shortener-db over the kamal Docker network.
 # Port 5432 is only bound to the VM's localhost, for SSH tunnels from the laptop.
