@@ -1,6 +1,6 @@
 # Kamal: settings shared by every destination. config/deploy.<destination>.yml adds the host,
 # proxy host and per-environment env, and is deep-merged over this file.
-# Deploy with `bin/kamal deploy -d staging` (first time: `bin/kamal setup -d staging`).
+# Deploy with `bin/kamal deploy -d staging|production` (first time: `bin/kamal setup -d <destination>`).
 # Spec: docs/spec/infrastructure.md#kamal
 service: url-shortener
 
