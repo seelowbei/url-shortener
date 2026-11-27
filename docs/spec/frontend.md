@@ -19,7 +19,7 @@
 stats/[code]/page.tsx         Public stats
 stats/[code]/opengraph-image.tsx   Open Graph image for the public stats page
 not-found.tsx, error.tsx, loading.tsx (+ per-route loading.tsx skeletons)
-middleware.ts
+proxy.ts
 ```
 Short codes (`/:code`, `/:code+`) never reach Next.js. They go to Rails on `SHORT_HOST`.
 
@@ -49,7 +49,7 @@ Short codes (`/:code`, `/:code+`) never reach Next.js. They go to Rails on `SHOR
 - **Global handling of 401:** a QueryClient `onError` clears the `me` query and sends the user to `/login?next=<current path>`.
 
 ## Auth in the frontend
-- `middleware.ts` matches only the `(app)` routes. If the session cookie is missing, it redirects to `/login?next=…`. This check is just for speed: Rails is the authority, and the 401 handling above catches expired sessions.
+- `proxy.ts` (Next.js 16's name for middleware) matches only the `(app)` routes. If the session cookie is missing, it redirects to `/login?next=…`. This check is just for speed: Rails is the authority, and the 401 handling above catches expired sessions.
 - `(app)/layout.tsx` loads `useMe` and shows a skeleton until it has loaded.
 - "Try the demo" calls `POST /api/session` with the demo credentials ([demo seed](product.md#demo-seed)).
 - `?next=` only accepts same-origin relative paths, to prevent open redirects.
