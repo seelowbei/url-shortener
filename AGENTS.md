@@ -61,7 +61,7 @@ cd infra
 pnpm install
 pnpm typecheck                          # tsc --noEmit (the only check CI runs, with format:check)
 pnpm format:check                       # Prettier
-pulumi preview -s staging               # needs the user's local OCI config; applying is the user's job
+pulumi preview -s staging               # needs the user's local AWS SSO profile; applying is the user's job
                                         # (STAGING_RUNNING=true while staging is up, or it previews a stop)
 pnpm staging:start / staging:stop       # the user's: start staging + deploy latest main / stop it
 
