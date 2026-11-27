@@ -1,5 +1,5 @@
-# Every push to main: CI → build the API image once → deploy it and the web app to staging → smoke test.
-# release-please and the production job join this workflow in build steps 2.5 and 2.6.
+# Every push to main: CI → build the API image once → deploy it and the web app to staging → smoke test
+# → release-please. The production job joins this workflow in build step 2.6.
 # Spec: docs/spec/delivery.md#pipeline-pipelineyml-on-push-to-main
 name: Pipeline
 
@@ -166,3 +166,38 @@ jobs:
           }
           check https://go-staging.cellow.space/up
           check https://console-staging.cellow.space/api/health -H "x-vercel-protection-bypass: $BYPASS"
+
+  # Opens or updates the release PR (`chore(main): release X.Y.Z`). When this push is the merged
+  # release PR, it tags vX.Y.Z and creates the GitHub Release instead.
+  # Runs after staging, so a release is only cut from a commit that went through it.
+  # It uses a GitHub App token, not GITHUB_TOKEN: PRs opened with GITHUB_TOKEN don't trigger
+  # workflows, so CI wouldn't run on the release PR and branch protection would block it.
+  release-please:
+    needs: staging
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Never run two at once: both could try to update the same release PR or create the same tag.
+    concurrency:
+      group: release-please
+      cancel-in-progress: false
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      # Scoped to what release-please needs: commits/tags/releases, the PR, and its labels.
+      - uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      # Reads release-please-config.json and .release-please-manifest.json from the repo root.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          token: ${{ steps.app-token.outputs.token }}
