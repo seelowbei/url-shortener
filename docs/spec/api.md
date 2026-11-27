@@ -53,4 +53,4 @@ Errors use the shape `{ "error": { "code": "validation_failed", "message": "..."
 
 **OpenAPI contract:** the `/api/*` endpoints are described in **rswag** request specs, which generate `api/swagger/v1/openapi.yaml` (committed). The web client's types are generated from that file ([frontend](frontend.md)). Docs are served at `/api/docs` in dev and staging only.
 
-**CSRF:** besides `SameSite=Lax` cookies, Rails rejects state-changing `/api/*` requests (POST/PATCH/DELETE) whose `Origin` header isn't in the allowlist: `APP_ORIGIN` in production, plus the Vercel preview-domain pattern for this project in staging. Rejected requests get 403.
+**CSRF:** besides `SameSite=Lax` cookies, Rails rejects state-changing `/api/*` requests (POST/PATCH/DELETE) whose `Origin` header isn't in `ALLOWED_ORIGINS`: the web app's origin (the same value as `APP_ORIGIN`), plus the Vercel preview-domain pattern for this project in staging. Rejected requests get 403.
