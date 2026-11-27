@@ -36,7 +36,7 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `MISSION_CONTROL_USER`, `MISSION_CONTROL_PASSWORD` | api (HTTP basic auth for `/jobs`) |
 | `ALLOWED_ORIGINS` (comma-separated; staging adds the Vercel preview pattern) | api (Origin check, [API](api.md#api-endpoints)) |
 | `API_ORIGIN` (server-side only, used by rewrites and server-side fetches; Vercel Preview `https://go-staging.cellow.space`, Production `https://go.cellow.space`) | web |
-| `NEXT_PUBLIC_APP_ENV` (`development`/`staging`/`production`) | web |
+| `NEXT_PUBLIC_APP_ENV` (`development`/`staging`/`production`; not a Vercel env var: `web/next.config.ts` derives it from Vercel's `VERCEL_ENV`, Production → `production`, Preview (staging and PR previews) → `staging`, anything else → `development`; an explicit env var overrides it) | web (staging banner) |
 | `NEXT_PUBLIC_APP_VERSION` (not a Vercel env var: `web/next.config.ts` reads the repo-root `version.txt` at build time, which needs the Vercel project's "Include files outside the root directory in the Build Step" left on; an explicit env var overrides it) | web (footer) |
 | `NEXT_PUBLIC_SHORT_HOST` (display only, e.g. the domain hint in the alias input) | web |
 | `aws:profile` (your local AWS CLI profile; the credentials stay in `~/.aws`, never in config) | infra (Pulumi config, local only, not in CI) |
