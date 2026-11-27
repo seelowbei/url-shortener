@@ -18,7 +18,7 @@ A Bitly-style URL shortener, built as a portfolio project. Everything runs on **
 
 The design lives in `SPEC.md` (overview and build order) and `docs/spec/*.md` (details). Read the relevant doc before implementing anything. If the code and the spec disagree, stop and ask rather than silently picking one. When the user changes a decision, update the spec in the same PR.
 
-**Status:** build steps 1.1 (repo and branch protection), 1.2 (Rails skeleton), 1.3 (Next.js skeleton), 1.4 (CI), 1.5 (accounts and prerequisites), 1.6 (Pulumi `staging` stack on AWS), 1.7 (first Kamal deploy to staging from the laptop), 1.8 (Vercel staging), 1.9 (staging deploys automated in `pipeline.yml`), 2.1 (Pulumi `prod` stack on AWS), 2.2 (production secrets), 2.3 (first Kamal deploy to production from the laptop), 2.4 (nightly Postgres backups to S3), 2.5 (release-please), 2.6 (the production job in `pipeline.yml`) and 2.7 (first release, `v0.1.0`) are done. Next is step 2.8 (`rollback.yml`). Do not start later build steps unless asked.
+**Status:** build steps 1.1 (repo and branch protection), 1.2 (Rails skeleton), 1.3 (Next.js skeleton), 1.4 (CI), 1.5 (accounts and prerequisites), 1.6 (Pulumi `staging` stack on AWS), 1.7 (first Kamal deploy to staging from the laptop), 1.8 (Vercel staging), 1.9 (staging deploys automated in `pipeline.yml`), 2.1 (Pulumi `prod` stack on AWS), 2.2 (production secrets), 2.3 (first Kamal deploy to production from the laptop), 2.4 (nightly Postgres backups to S3), 2.5 (release-please), 2.6 (the production job in `pipeline.yml`), 2.7 (first release, `v0.1.0`) and 2.8 (`rollback.yml`) are done. Next is step 2.9 (monitoring). Do not start later build steps unless asked.
 
 ## Layout
 
