@@ -42,7 +42,7 @@ jobs/
   click_job.rb, scan_link_job.rb, rescan_links_job.rb
 views/pages/                      not_found.html.erb, interstitial.html.erb
 ```
-`config/initializers/app_config.rb` defines `AppConfig`, which reads every env var with `ENV.fetch` at boot. A missing secret fails the boot, so Kamal's health check stops the deploy.
+Env vars are read once at boot into `Rails.application.config.x.*` (for example `config.x.short_host`). `config/application.rb` (or an initializer) sets them with `ENV.fetch("VAR", default)` for dev/test, and `config/environments/production.rb` re-reads required ones with `ENV.fetch("VAR")` and no default, so a missing value fails the boot and Kamal's health check stops the deploy. Code under `app/` reads `Rails.configuration.x.<name>`, never `ENV`; only `config/` (including gem initializers such as Sentry) reads `ENV`.
 
 ## Services and Result
 ```ruby
@@ -84,7 +84,7 @@ end
 get "up", to: "health#show"                 # {status, version, sha}; 503 if the database is down
 get "api/health", to: "health#show"         # the same, reachable through the Next.js /api rewrite
 mount MissionControl::Jobs::Engine, at: "/jobs"
-mount Rswag::Ui::Engine, at: "/api/docs" if AppConfig.api_docs_enabled  # dev + staging
+mount Rswag::Ui::Engine, at: "/api/docs" if Rails.configuration.x.api_docs_enabled  # dev + staging
 
 # Last: short codes
 constraints(code: /[A-Za-z0-9_-]{3,30}/) do
