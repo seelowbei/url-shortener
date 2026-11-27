@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/seelowbei/url-shortener/compare/v0.1.0...v0.2.0) (2026-11-27)
+
+
+### Features
+
+* add Sentry and uptime monitoring (build step 2.9) ([#31](https://github.com/seelowbei/url-shortener/issues/31)) ([9f18d53](https://github.com/seelowbei/url-shortener/commit/9f18d53318f179619fe3bd62f5c6c986afeeaf4f))
+* **web:** show the app version in the footer ([#28](https://github.com/seelowbei/url-shortener/issues/28)) ([29850f8](https://github.com/seelowbei/url-shortener/commit/29850f876e8a181abf58ec8071a44a36b825da85))
+
 ## 0.1.0 (2026-11-27)
 
 
