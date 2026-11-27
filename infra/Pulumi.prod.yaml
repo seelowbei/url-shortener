@@ -15,3 +15,8 @@ config:
   url-shortener:shortHost: go.cellow.space
   url-shortener:appHost: console.cellow.space
   url-shortener:vercelCname: 4eae97432a16395d.vercel-dns-017.com
+  cloudflare:apiToken:
+    secure: AAABADKs3PZADhiv9ycOzTil1npQwgSeKmsn4CUiZo+XMXgjEdpcOGTL9fGNq4phT4tpyvAEPgovsbEMyyb69HYnCvJbuW6CD7I2pBLpzpSaaejZ5g==
+  url-shortener:sshPublicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO3l94t/YI7ECDDcw3Rr9U9ejcu6nUi8G6jmJgM7R5uE url-shortener deploy
+  url-shortener:tailscaleAuthKey:
+    secure: AAABAOUsMZpyhu66xHTZEc5eOXw1HG0L6tU3/SNPj9DDM4l5izdyu45TZqHsupPazIWxRTu5W42AhBkivMU1gatf5QZrVKDe0AbQeqtQBNCYANjZlIjVC7+bX7vP
