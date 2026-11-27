@@ -1,0 +1,20 @@
+# Production destination: EC2 url-shortener-prod (t4g.small, 2 GB), reached over Tailscale.
+# Merged over config/deploy.yml. Secrets: .kamal/secrets.production.
+servers:
+  web:
+    - url-shortener-prod
+
+proxy:
+  host: go.cellow.space
+
+env:
+  clear:
+    APP_ENV: production
+    SHORT_HOST: go.cellow.space
+
+accessories:
+  db:
+    host: url-shortener-prod
+    # Sized for a 2 GB VM shared with Rails. Each app container can open up to 15 connections
+    # (3 pools of 5), and a deploy briefly runs two, so 40 leaves headroom.
+    cmd: postgres -c shared_buffers=256MB -c max_connections=40
