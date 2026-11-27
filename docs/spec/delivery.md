@@ -87,8 +87,13 @@ push to main
 - **Approval:** the required reviewer on the `production` environment is free for public repos. On a private repo, merging the release PR is the gate.
 
 ### Rollback
-- **Fast:** `rollback.yml` (`workflow_dispatch`, input: a previous tag such as `v1.3.0`) deploys that tag's image, which is already in GHCR, to production with `kamal deploy -d production --skip-push --version=<tag's sha>`, and rolls the web back to the matching Vercel deployment. No rebuild.
-- **Manual:** `kamal rollback <sha> -d production` / `vercel rollback`.
+- **Fast:** `rollback.yml` (`workflow_dispatch` on `main`, input: a previous tag such as `v1.3.0`), in the `production` environment (approval) and concurrency group. No rebuild:
+  1. Checks the input is a `vX.Y.Z` tag, resolves it to its commit sha, and checks that `vX.Y.Z` and `<sha>` are the same image in GHCR.
+  2. Finds the ready Vercel production deployment of that sha, before anything is deployed, so a missing one (deleted by retention) fails early.
+  3. `kamal deploy -d production --skip-push --version=<sha>`.
+  4. Promotes that Vercel deployment through the REST API, which points `console.cellow.space` back at it. It promotes rather than rolls back: on Hobby, `vercel rollback` only reaches the previous production deployment, and a rollback turns off auto-assignment of the production domain, so the next release wouldn't take `console.cellow.space`.
+  5. The same smoke test as the production job, expecting the tag's sha and version.
+- **Manual:** `kamal rollback <sha> -d production` / `vercel rollback`. After a manual `vercel rollback`, promote the next production deployment (`vercel promote`) to turn auto-assignment back on.
 - A rollback doesn't change versions. The fix goes out as the next release.
 - **Database migrations must be backward compatible** (expand → deploy → contract across two releases). Kamal starts the new container while the old one still serves traffic, and a rollback runs old code against the new schema.
 
