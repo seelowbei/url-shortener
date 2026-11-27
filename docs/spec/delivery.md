@@ -66,11 +66,11 @@ push to main
                           smoke test
               └─ release-please   opens/updates the release PR, or — when this push
                                   *is* the merged release PR — tags vX.Y.Z + GitHub Release
-                  └─ production   only if release_created == true
+                  └─ production   only if release_created == true and staging deployed
                                   environment: production (required reviewer: you)
                                   retag <sha> → vX.Y.Z in GHCR
                                   kamal deploy -d production --skip-push --version=<sha>
-                                  vercel deploy --prebuilt --prod (same commit)
+                                  vercel deploy --prod (same commit, built on Vercel)
                                   smoke test
 ```
 
@@ -80,7 +80,8 @@ push to main
 3. When staging looks good, **merge the release PR** while staging is still running. That push goes through CI → build → staging (the release commit only changes `version.txt` and `CHANGELOG.md`), then release-please creates tag `vX.Y.Z` and the GitHub Release, then the production job waits for your approval and deploys the exact image staging just ran.
 
 **Details:**
-- **Staging stopped:** the staging job first checks whether `url-shortener-staging` is online in the tailnet. If it isn't, it skips the deploy and smoke test with a notice, and the run still passes. The production job only runs if the staging job actually deployed and smoke-tested that commit, so a release can't skip staging.
+- **Staging stopped:** the staging job first checks whether `url-shortener-staging` is online in the tailnet. If it isn't, it skips the deploy and smoke test with a notice, and the run still passes. The production job only runs if the staging job actually deployed and smoke-tested that commit, so a release can't skip staging. If the release PR is merged while staging is stopped, release-please still creates the release, but the release-please job then fails with an error saying production wasn't deployed; deploy that tag by hand after checking it on staging.
+- **Web build:** both web deploys build on Vercel from the checked-out commit (no `--prebuilt`). `API_ORIGIN` is a sensitive Vercel variable, which `vercel pull` can't download, so a build in CI would miss it. Production deploys get the project's production domain, `console.cellow.space`, automatically.
 - **Concurrency:** group `staging` queues runs instead of cancelling one mid-deploy (that would leave the Kamal deploy lock held). GitHub keeps only the newest pending run, so in-between commits are skipped. Group `production` is never cancelled mid-run.
 - **Smoke test:** `GET /up` = 200 with the expected `version`/`sha`, the same through the web app's rewrite (`/api/health` on the web host, with the Vercel protection bypass header in staging), then `POST /api/links` → `GET /:code` = 302 to the right destination. In production the throwaway link is deleted afterwards. Until the links endpoints exist, it checks only `/up` and `/api/health`.
 - **Approval:** the required reviewer on the `production` environment is free for public repos. On a private repo, merging the release PR is the gate.
