@@ -1,6 +1,6 @@
 # URL Shortener
 
-A Bitly-style URL shortener, built as a portfolio project: short links on `go.cellow.space`, a dashboard on `console.cellow.space`, and click analytics from PostHog.
+A URL shortener: short links on `go.cellow.space`, a dashboard on `console.cellow.space`, and click analytics from PostHog.
 
 > **Status:** work in progress. The walking skeleton (build steps 1.1–1.9) runs on staging with automated deploys. Next is the production stack and release flow (step 2), then the link features. See the [build order](SPEC.md#build-order).
 
