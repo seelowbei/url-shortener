@@ -40,5 +40,9 @@ module Api
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # The host short links are served on (go.cellow.space in production). Links may not point at it,
+    # so a short link can never redirect to another short link. production.rb requires SHORT_HOST.
+    config.x.short_host = ENV.fetch("SHORT_HOST", "localhost")
   end
 end
