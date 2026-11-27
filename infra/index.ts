@@ -15,6 +15,8 @@ const volumeSizeGb = config.requireNumber("volumeSizeGb");
 const availabilityZoneIndex = config.getNumber("availabilityZoneIndex") ?? 0;
 // prod: a fixed Elastic IP. staging: the instance's own public IP, which changes on every start.
 const elasticIp = config.getBoolean("elasticIp") ?? false;
+// prod only: the S3 bucket for nightly pg_dump backups. Its name is per AWS account, not per stack.
+const backups = config.getBoolean("backups") ?? false;
 // staging only: false stops the VM (you pay for its disk only) and removes the short-host record.
 // STAGING_RUNNING=true|false overrides the committed value, so `pnpm staging:start` / `staging:stop`
 // switch it without editing Pulumi.staging.yaml. The committed value stays "false".
@@ -126,6 +128,93 @@ const instanceProfile = new aws.iam.InstanceProfile(prefix, {
   tags,
 });
 
+// --- Backup bucket (prod): private, encrypted, objects deleted after 14 days ---
+// The backup accessory uploads with the instance role (IMDSv2), so there are no access keys.
+
+let bucketName: pulumi.Output<string> | undefined;
+if (backups) {
+  const accountId = aws.getCallerIdentityOutput().accountId;
+  const bucket = new aws.s3.Bucket(`${prefix}-backups`, {
+    bucket: pulumi.interpolate`url-shortener-backups-${accountId}`,
+    tags,
+  });
+
+  new aws.s3.BucketPublicAccessBlock(`${prefix}-backups`, {
+    bucket: bucket.id,
+    blockPublicAcls: true,
+    blockPublicPolicy: true,
+    ignorePublicAcls: true,
+    restrictPublicBuckets: true,
+  });
+
+  new aws.s3.BucketOwnershipControls(`${prefix}-backups`, {
+    bucket: bucket.id,
+    rule: { objectOwnership: "BucketOwnerEnforced" }, // no ACLs
+  });
+
+  new aws.s3.BucketServerSideEncryptionConfiguration(`${prefix}-backups`, {
+    bucket: bucket.id,
+    rules: [
+      {
+        applyServerSideEncryptionByDefault: { sseAlgorithm: "AES256" }, // SSE-S3, free
+        bucketKeyEnabled: true,
+      },
+    ],
+  });
+
+  new aws.s3.BucketLifecycleConfiguration(`${prefix}-backups`, {
+    bucket: bucket.id,
+    rules: [
+      {
+        id: "expire-after-14-days",
+        status: "Enabled",
+        filter: { prefix: "" }, // every object
+        expiration: { days: 14 },
+        abortIncompleteMultipartUpload: { daysAfterInitiation: 1 },
+      },
+    ],
+  });
+
+  new aws.s3.BucketPolicy(`${prefix}-backups`, {
+    bucket: bucket.id,
+    policy: aws.iam.getPolicyDocumentOutput({
+      statements: [
+        {
+          sid: "DenyInsecureTransport",
+          effect: "Deny",
+          principals: [{ type: "*", identifiers: ["*"] }],
+          actions: ["s3:*"],
+          resources: [bucket.arn, pulumi.interpolate`${bucket.arn}/*`],
+          conditions: [
+            {
+              test: "Bool",
+              variable: "aws:SecureTransport",
+              values: ["false"],
+            },
+          ],
+        },
+      ],
+    }).json,
+  });
+
+  // Put/list/get only: no delete, so a compromised VM can't wipe the backups (the lifecycle
+  // rule expires them).
+  new aws.iam.RolePolicy(`${prefix}-backups`, {
+    role: role.id,
+    policy: aws.iam.getPolicyDocumentOutput({
+      statements: [
+        { actions: ["s3:ListBucket"], resources: [bucket.arn] },
+        {
+          actions: ["s3:PutObject", "s3:GetObject"],
+          resources: [pulumi.interpolate`${bucket.arn}/*`],
+        },
+      ],
+    }).json,
+  });
+
+  bucketName = bucket.bucket;
+}
+
 // --- VM ---
 
 const cloudInitTemplate = fs.readFileSync(
@@ -232,6 +321,6 @@ new cloudflare.DnsRecord(`${prefix}-app`, {
   comment: recordComment,
 });
 
-export { publicIp, shortHost };
+export { publicIp, shortHost, bucketName };
 export const instanceId = instance.id;
 export const tailscaleHost = prefix;
