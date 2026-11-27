@@ -15,7 +15,7 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | same value in both (CI credentials, not app secrets) | same value in both |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | yes | – (`console.cellow.space` is public) |
 
-`production` has you as required reviewer and only allows deployments from `main`. `staging` has no protection rules. `SENTRY_DSN` (the Rails project's DSN, same value in both; optional) came with step 2.9. Keys for later features (PostHog, Safe Browsing, Mission Control, `INTERNAL_TOKEN`) are added to both in the build steps that use them.
+`production` has you as required reviewer and only allows deployments from `main`. `staging` has no protection rules. `SENTRY_DSN` (the Rails project's DSN, same value in both; optional) came with step 2.9. Keys for later features (PostHog, Safe Browsing, Mission Control) are added to both in the build steps that use them.
 
 | Var | Where |
 |---|---|
@@ -26,7 +26,6 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `SHORT_HOST` (`go.cellow.space`; staging `go-staging.cellow.space`), `APP_ORIGIN` (`https://console.cellow.space`; staging `https://console-staging.cellow.space`) | api |
 | `SECRET_KEY_BASE` (different per environment, from `bin/rails secret`; signs cookies and seeds the visitor-hash salt) | api (Kamal secret, GitHub environment secret) |
 | `KAMAL_REGISTRY_PASSWORD` (GHCR token, `write:packages`, one per environment) | api (Kamal secret, GitHub environment secret) |
-| `INTERNAL_TOKEN` | api + GitHub Actions (for scheduled maintenance calls) |
 | `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST` | api (capture) |
 | `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_PROJECT_ID` | api (query, never sent to the browser) |
 | `SAFE_BROWSING_API_KEY` | api |
