@@ -2,7 +2,7 @@
 
 A URL shortener: short links on `go.cellow.space`, a dashboard on `console.cellow.space`, and click analytics from PostHog.
 
-> **Status:** work in progress. The walking skeleton (build steps 1.1–1.9) runs on staging with automated deploys. Next is the production stack and release flow (step 2), then the link features. See the [build order](SPEC.md#build-order).
+> **Status:** work in progress. The walking skeleton (build steps 1.1–1.9) runs on staging with automated deploys. Production runs on `go.cellow.space`, deployed from the laptop, with nightly Postgres backups to S3 (steps 2.1–2.4). Next is the release flow (release-please and automated production deploys, the rest of step 2), then the link features. See the [build order](SPEC.md#build-order).
 
 ## Stack
 
