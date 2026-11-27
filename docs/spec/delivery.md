@@ -47,8 +47,8 @@
 
 ### Versioning (release-please)
 - **One version for the whole product** (API + web ship together). Root-level release-please config:
-  - `release-please-config.json`: one package at `.`, `release-type: simple`, `bump-minor-pre-major: true` (while on 0.x, `feat` bumps minor and breaking changes bump minor), changelog sections for Features / Bug Fixes / Performance.
-  - `.release-please-manifest.json`: `{ ".": "0.0.0" }`, so the first `feat:` commit gives a release PR for `0.1.0`.
+  - `release-please-config.json`: one package at `.`, `release-type: simple`, `bump-minor-pre-major: true` (while on 0.x, `feat` bumps minor and breaking changes bump minor), `initial-version: "0.1.0"`, changelog sections for Features / Bug Fixes / Performance.
+  - `.release-please-manifest.json`: `{ ".": "0.0.0" }`. With no earlier release tag, release-please ignores this version and proposes `initial-version` (default `1.0.0`), so `initial-version` is what makes the first release PR `0.1.0`.
   - `version.txt` (bumped by release-please) and `CHANGELOG.md` (generated).
 - The version is passed into the image as a build arg (`APP_VERSION`, along with `GIT_SHA`). `GET /up` returns `{version, sha}`, and the web footer shows the version, so you can always tell what's running where.
 - **release-please needs a GitHub App token:** a GitHub App created for the repo (`actions/create-github-app-token`), not `GITHUB_TOKEN`. PRs created with `GITHUB_TOKEN` don't trigger workflows, so CI wouldn't run on the release PR and branch protection would block merging it.
