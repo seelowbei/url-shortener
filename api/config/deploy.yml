@@ -24,7 +24,9 @@ registry:
 # Built natively on Apple Silicon or GitHub's arm64 runner; the VMs are Graviton (arm64).
 builder:
   arch: arm64
+  # Laptop builds; CI builds the image in pipeline.yml with the same args. Kamal runs from api/.
   args:
+    APP_VERSION: <%= File.read("../version.txt").strip %>
     GIT_SHA: <%= `git rev-parse HEAD`.strip %>
 
 # kamal-proxy: Let's Encrypt TLS for the destination's host, health check on /up.
