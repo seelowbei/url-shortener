@@ -18,3 +18,25 @@ accessories:
     # Sized for a 2 GB VM shared with Rails. Each app container can open up to 15 connections
     # (3 pools of 5), and a deploy briefly runs two, so 40 leaves headroom.
     cmd: postgres -c shared_buffers=256MB -c max_connections=40
+
+  # Nightly pg_dump of each database to the S3 backup bucket (prod only; staging data is
+  # disposable). Same Postgres major as db, so pg_dump matches the server. The AWS CLI uses the
+  # instance role through IMDSv2 (hop limit 2), so there are no access keys. Retention is the
+  # bucket's 14-day lifecycle rule. Spec: docs/spec/infrastructure.md#backups
+  backup:
+    image: postgres:17.12-alpine3.24
+    host: url-shortener-prod
+    files:
+      - .kamal/backup/entrypoint.sh:/usr/local/bin/backup-entrypoint:ro
+      - .kamal/backup/backup.sh:/usr/local/bin/backup:ro
+    cmd: /usr/local/bin/backup-entrypoint
+    env:
+      clear:
+        # The prod stack's bucketName output.
+        BACKUP_BUCKET: url-shortener-backups-756921148563
+        BACKUP_DATABASES: url_shortener_production url_shortener_production_cache url_shortener_production_queue
+        AWS_REGION: ap-southeast-1
+        PGHOST: url-shortener-db
+        PGUSER: url_shortener
+      secret:
+        - POSTGRES_PASSWORD
