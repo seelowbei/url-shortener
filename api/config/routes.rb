@@ -5,4 +5,9 @@ Rails.application.routes.draw do
   namespace :api do
     get "health", to: "/health#show"
   end
+
+  # Last: short codes, so they never shadow the routes above.
+  constraints(code: /[A-Za-z0-9_-]{3,30}/) do
+    get "/:code", to: "redirects#show", format: false
+  end
 end
