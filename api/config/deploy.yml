@@ -24,7 +24,9 @@ registry:
 # Built natively on Apple Silicon or GitHub's arm64 runner; the VMs are Graviton (arm64).
 builder:
   arch: arm64
+  # Laptop builds; CI builds the image in pipeline.yml with the same args. Kamal runs from api/.
   args:
+    APP_VERSION: <%= File.read("../version.txt").strip %>
     GIT_SHA: <%= `git rev-parse HEAD`.strip %>
 
 # kamal-proxy: Let's Encrypt TLS for the destination's host, health check on /up.
@@ -47,6 +49,7 @@ env:
   secret:
     - SECRET_KEY_BASE
     - POSTGRES_PASSWORD
+    - SENTRY_DSN
 
 # Postgres on the same VM. The app reaches it as url-shortener-db over the kamal Docker network.
 # Port 5432 is only bound to the VM's localhost, for SSH tunnels from the laptop.

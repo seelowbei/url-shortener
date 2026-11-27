@@ -9,6 +9,7 @@ A Bitly-style URL shortener, built as a portfolio project. Everything runs on **
 - **API and redirects:** Rails 8.1 API (`api/`) on Ruby 4.0.10, with PostgreSQL 17, Solid Queue and Solid Cache.
 - **Frontend:** Next.js App Router (`web/`).
 - **Analytics:** PostHog. Click events are captured server-side, and stats come from HogQL queries.
+- **Monitoring:** Sentry (Rails and Next.js projects) and UptimeRobot on production `/up`.
 - **Hosting:**
   - Rails runs on AWS EC2 in Singapore (prod `t4g.small`, staging `t4g.micro`), deployed with Kamal. Staging is stopped when not in use.
   - Next.js runs on Vercel Hobby.
@@ -60,7 +61,7 @@ cd infra
 pnpm install
 pnpm typecheck                          # tsc --noEmit (the only check CI runs, with format:check)
 pnpm format:check                       # Prettier
-pulumi preview -s staging               # needs the user's local OCI config; applying is the user's job
+pulumi preview -s staging               # needs the user's local AWS SSO profile; applying is the user's job
                                         # (STAGING_RUNNING=true while staging is up, or it previews a stop)
 pnpm staging:start / staging:stop       # the user's: start staging + deploy latest main / stop it
 
@@ -73,7 +74,7 @@ Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brake
 
 - **Low cost.** The only paid items are the `cellow.space` domain and AWS, which stays within about $20/month: a prod `t4g.small` and a staging `t4g.micro` (stopped when not in use), their disks, the prod Elastic IP and the S3 backup bucket. Don't add another paid service or plan, or an AWS resource that bills while idle (NAT gateway, load balancer, RDS, and so on), without asking.
 - **The redirect path (`GET /:code`) never waits on a third party.** It does one indexed lookup and enqueues `ClickJob`. No PostHog or Safe Browsing call, no session, no write to the `links` row.
-- **No raw IP is stored or logged.** Visitors are identified by `SHA256(ip + user_agent + daily_salt)`.
+- **No raw IP is stored, logged or sent to Sentry.** Visitors are identified by `SHA256(ip + user_agent + daily_salt)`.
 - **Rails owns all business logic and auth.** Next.js is the UI: no database access, no auth library.
 - **The same Docker image runs in staging and production.** Nothing environment-specific is baked into the image; config comes from environment variables.
 - **Database migrations must be backward compatible** (expand → deploy → contract), because Kamal runs old and new containers side by side and a rollback runs old code against the new schema.
@@ -100,4 +101,4 @@ Before calling an API change done, run `bin/rspec`, `bin/rubocop` and `bin/brake
 - **Change infrastructure:** no `pulumi up`, `destroy`, `refresh`, `import`, `cancel`, `state`, `stack init/rm` or `config set/rm`, and no `pnpm staging:start` / `staging:stop` (they run `pulumi up`). `pulumi preview` is fine. Ask the user to apply.
 - **Touch secrets:** never read, print or commit `config/master.key`, `config/credentials/*.key`, `.env` files, `*.pem` keys or decrypted credentials (`rails credentials:show`, `kamal secrets print`, `--show-secrets`). `.claude/hooks/protect-secrets.mjs` blocks these for both agents.
   When adding a variable, update `docs/spec/config.md` and the committed `*.sample` / `.kamal/secrets*` references instead.
-- **Send real user data** (URLs, IPs, emails) to any service other than PostHog and Google Safe Browsing, and only as the spec describes.
+- **Send real user data** (URLs, IPs, emails) to any service other than PostHog and Google Safe Browsing, and only as the spec describes. Sentry gets errors only, with personal data stripped (`docs/spec/backend.md#observability`): keep the Sentry `data_collection` / `dataCollection` settings that way.

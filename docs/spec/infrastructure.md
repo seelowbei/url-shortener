@@ -97,7 +97,7 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 ### Postgres (Kamal accessory on the same VM)
 - `postgres:17` accessory in `config/deploy.yml`, data on a host directory on the VM's root volume (`~deploy/url-shortener-db/data`). It's under the deploy user's home because Kamal creates the directory as `deploy`, which can't write to `/var/lib`.
 - **Not exposed publicly:** no published port (or bound to `127.0.0.1` only). The app reaches it by container name on the Kamal Docker network. Port 5432 stays closed in the security group.
-- One database server holds the primary, Solid Queue and Solid Cache databases (Rails 8 multi-database config). Solid Cache is capped (`max_size: 256.megabytes`), and Solid Queue clears finished jobs.
+- One database server holds the primary, Solid Queue and Solid Cache databases (Rails 8.1 multi-database config). Solid Cache is capped (`max_size: 256.megabytes`), and Solid Queue clears finished jobs.
 - Tuning for a VM shared with Rails: `max_connections=40` (each app container can open up to 15 connections, across 3 pools of 5, and a deploy briefly runs two), plus `shared_buffers=256MB` on prod (2 GB) and `128MB` on staging (1 GB).
 - **Local access:** an SSH tunnel (`ssh -L 5433:127.0.0.1:5432 …`, with the port bound to localhost on the VM) for seeds, the click backfill and debugging from your laptop.
 - Upgrades: pin the major version and change it on purpose, with dump → restore. Never `latest`.
@@ -112,16 +112,16 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
   - Manual run: `kamal accessory exec backup -d production --reuse /usr/local/bin/backup`. Without `--reuse`, Kamal starts a fresh container that has no `aws-cli`.
 - The backup is stored off the VM, so losing the VM or its disk is recoverable.
 - **Restoring a dump:** `aws s3 cp s3://<bucket>/<database>/<timestamp>.dump .` with your SSO profile, then `pg_restore --no-owner --dbname=<database> <file>` into an empty database (`--clean --if-exists` to overwrite an existing one).
-- **Restore drill**, documented in the README: `pulumi up --replace <instance-urn>` (new VM; the Elastic IP moves to it, so DNS doesn't change) → wait for cloud-init → `kamal setup` → `pg_restore` the latest dump → `kamal deploy`. Test it once before calling the deploy done.
+- **Restore drill:** `pulumi up --replace <instance-urn>` (new VM; the Elastic IP moves to it, so DNS doesn't change) → wait for cloud-init → `kamal setup` → `pg_restore` the latest dump → `kamal deploy`. **Not run yet:** steps 2.3 and 2.4 were verified with a local `pg_restore` only. Run it once before production holds real user data (before step 4, auth), then document it in the README.
 
 ### Vercel
 - Next.js on the Hobby plan, one Vercel project from `/web`, with the custom domains `console.cellow.space` (production) and `console-staging.cellow.space` (staging alias). Custom domains are free on Hobby.
-- Vercel only links a Preview domain to an existing Git branch, so `console-staging.cellow.space` is linked to a `staging` branch that **nobody pushes to**. The domain only moves when the pipeline runs `vercel alias`. Pushing to `staging` would hand the staging domain to that preview.
+- Vercel only links a Preview domain to an existing Git branch, so `console-staging.cellow.space` is linked to a `staging` branch that **nobody pushes to**. The domain only moves when the pipeline aliases a staging deploy to it, through the Vercel REST API (`vercel alias` fails with a team-scoped token). Pushing to `staging` would hand the staging domain to that preview.
 - **The Git integration only builds PR previews.** `vercel.json` turns off automatic deploys from `main` (`"git": {"deploymentEnabled": {"main": false}}`). Staging and production web deploys run from GitHub Actions with the Vercel CLI, so the web app and the API always ship together ([environments and release flow](delivery.md#environments-and-release-flow)).
 - `API_ORIGIN` env var for the rewrites: the Vercel *Preview* environment points at the staging API, *Production* at the prod API. The rewrites read it at build time, so changing it needs a redeploy.
 - **Deployment Protection stays on** (Vercel Authentication, standard protection). PR previews and `console-staging.cellow.space` redirect to a Vercel login, because they write to the staging API; only `console.cellow.space` is public. Automated checks against staging (the Playwright happy path in the pipeline) send the *Protection Bypass for Automation* secret in the `x-vercel-protection-bypass` header. The bypass is free on Hobby.
 
 ### Pipeline (GitHub Actions)
-- `ci.yml`: tests ([testing and CI](delivery.md#testing-and-ci)) and the Conventional Commits PR-title check on every PR, plus `tsc --noEmit` for `/infra`.
+- `ci.yml`: tests ([testing and CI](delivery.md#testing-and-ci)) on every PR, plus `tsc --noEmit` for `/infra`. `pr-title.yml`: the Conventional Commits PR-title check.
 - `pipeline.yml` (push to `main`: CI → build → staging → release-please → production) and `rollback.yml`: see [environments and release flow](delivery.md#environments-and-release-flow).
 - Infrastructure changes are never applied from CI; `pulumi up` runs by hand ([infrastructure](#infrastructure-pulumi)).

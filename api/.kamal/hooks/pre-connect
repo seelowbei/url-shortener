@@ -7,6 +7,9 @@
 # Only for commands that send secrets to the servers; read-only ones (logs, details, ...) skip it.
 set -euo pipefail
 
+# Optional secrets may be empty: the app runs without them. SENTRY_DSN unset = Sentry off.
+optional=" SENTRY_DSN "
+
 case "${KAMAL_COMMAND:-}" in
   setup | deploy | redeploy | rollback | registry | env) ;;
   accessory)
@@ -24,6 +27,7 @@ secrets_file=".kamal/secrets.${KAMAL_DESTINATION:-}"
 
 missing=()
 while IFS= read -r name; do
+  [[ "$optional" == *" $name "* ]] && continue
   [ -n "${!name:-}" ] || missing+=("$name")
 done < <(sed -n 's/^\([A-Z_][A-Z0-9_]*\)=.*/\1/p' "$secrets_file")
 
