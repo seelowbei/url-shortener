@@ -133,11 +133,13 @@ No session lookup, no cookies, no cache in front of the lookup (Solid Cache is a
 
 ## Observability
 - **Logs:** JSON to stdout, one line per request (`request_id`, method, path, status, duration_ms, `link_code` when present, `user_id` when signed in). IPs aren't logged. Read them with `kamal app logs -d production`.
-- **Sentry** (`sentry-ruby` + `sentry-rails`):
-  - `release: APP_VERSION`, `environment: APP_ENV`, `send_default_pii: false`.
-  - Errors are captured from requests and jobs. Performance tracing is off at first (it uses up free-plan quota).
-  - The Next.js side uses `@sentry/nextjs` with the same release name, so errors from both sides match up with release-please versions.
-- **Uptime:** UptimeRobot on `/up` for staging and production ([deployment](infrastructure.md#deployment)).
+- **Sentry** (free Developer plan; `sentry-ruby` + `sentry-rails`, `config/initializers/sentry.rb`), one project per app:
+  - `release: APP_VERSION` (the same name in staging and production, since one image runs in both), `environment: APP_ENV`, and a `git_sha` tag. Between releases `version.txt` holds the last released version, so staging events carry that version; the `git_sha` tag tells builds apart.
+  - Off when `SENTRY_DSN` is unset (dev, test, or a deploy whose environment lacks it), so a deploy never depends on Sentry.
+  - Errors are captured from requests and jobs. Events are sent from a background thread, so no request waits on Sentry. Performance tracing is off (it uses up free-plan quota).
+  - **No personal data** (`data_collection`, which replaces the deprecated `send_default_pii`): no user or IP, no cookies, bodies, query strings or job arguments (`ClickJob` carries the visitor's IP and user agent). Request headers and the Rack env are allow-listed (`Content-*`, `Accept*`, `Host`, `Origin`, `X-Request-Id`, `SERVER_*`); everything else, including `REMOTE_ADDR`, `X-Forwarded-For`, `User-Agent` and `Referer`, is sent as `[Filtered]`. Both Sentry projects also have *Prevent Storing of IP Addresses* turned on.
+  - The Next.js side uses `@sentry/nextjs` with the same release name, environment and tag, so errors from both sides match up with release-please versions ([frontend](frontend.md#errors-loading-and-empty-states)).
+- **Uptime:** UptimeRobot (free plan, 5-minute checks, email alerts) runs an HTTP(s) monitor on `https://go.cellow.space/up`, which returns 503 when the database is unreachable. Staging isn't monitored: it's stopped most of the time on purpose, so it would alert on every stop.
 
 ## Gems
 `rails ~> 8.x`, `pg`, `puma`, `solid_queue`, `solid_cache`, `mission_control-jobs`, `bcrypt`, `alba`, `pagy`, `faraday`, `posthog-ruby`, `browser`, `rqrcode`, `sentry-ruby`, `sentry-rails`, `bootsnap`, `kamal`, `thruster` (optional; kamal-proxy already terminates TLS).

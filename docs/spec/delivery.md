@@ -37,7 +37,7 @@
 - **Staging runs `RAILS_ENV=production`**, so it tests exactly the prod configuration. Only env vars differ. An `APP_ENV=staging|production` variable is used for labels (a "STAGING" banner in the UI) and as the PostHog `environment` property.
 - **PostHog:** one project per environment if your plan allows it. Otherwise one project, with every event carrying an `environment` property and every HogQL query filtering on it.
 - **Safe Browsing:** one API key for both.
-- **Staging is for your own testing and is stopped when not in use** (`running: false` in its stack, [deployment](infrastructure.md#aws-ec2-vm-rails)). A cold start of about a minute is fine. UptimeRobot only monitors production.
+- **Staging is for your own testing and is stopped when not in use** (`running: false` in its stack, [deployment](infrastructure.md#aws-ec2-vm-rails)). A cold start of about a minute is fine. UptimeRobot only monitors production. Sentry reports staging errors under `environment: staging`.
 
 ### Branching and commits
 - Trunk-based: short-lived feature branches → PR → **squash-merge** to `main`.

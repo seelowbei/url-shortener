@@ -15,7 +15,7 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | same value in both (CI credentials, not app secrets) | same value in both |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | yes | – (`console.cellow.space` is public) |
 
-`production` has you as required reviewer and only allows deployments from `main`. `staging` has no protection rules. Keys for later features (PostHog, Safe Browsing, Sentry, Mission Control, `INTERNAL_TOKEN`) are added to both in the build steps that use them.
+`production` has you as required reviewer and only allows deployments from `main`. `staging` has no protection rules. `SENTRY_DSN` (the Rails project's DSN, same value in both; optional) came with step 2.9. Keys for later features (PostHog, Safe Browsing, Mission Control, `INTERNAL_TOKEN`) are added to both in the build steps that use them.
 
 | Var | Where |
 |---|---|
@@ -31,8 +31,11 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_PROJECT_ID` | api (query, never sent to the browser) |
 | `SAFE_BROWSING_API_KEY` | api |
 | `ANALYTICS_ADAPTER` (`posthog`/`fake`) | api |
-| `SENTRY_DSN` | api (Rails) |
-| `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN` (source map upload at build time) | web |
+| `APP_ENV` (`staging`/`production`; labels, Sentry `environment`, PostHog `environment` property) | api (clear value in `config/deploy.<destination>.yml`) |
+| `SENTRY_DSN` (Rails project; optional, Sentry is off when empty, which the Kamal `pre-connect` hook allows) | api (Kamal secret, GitHub environment secret in `staging` and `production`) |
+| `NEXT_PUBLIC_SENTRY_DSN` (Next.js project; inlined at build time, public by design) | web (Vercel Production and Preview) |
+| `SENTRY_AUTH_TOKEN` (organization token for source map upload), `SENTRY_ORG`, `SENTRY_PROJECT` (slugs) | web (Vercel Production and Preview, build time only; without the token nothing is uploaded) |
+| `NEXT_PUBLIC_GIT_SHA` (not a Vercel env var: `web/next.config.ts` copies Vercel's `VERCEL_GIT_COMMIT_SHA`) | web (Sentry `git_sha` tag) |
 | `MISSION_CONTROL_USER`, `MISSION_CONTROL_PASSWORD` | api (HTTP basic auth for `/jobs`) |
 | `ALLOWED_ORIGINS` (comma-separated; staging adds the Vercel preview pattern) | api (Origin check, [API](api.md#api-endpoints)) |
 | `API_ORIGIN` (server-side only, used by rewrites and server-side fetches; Vercel Preview `https://go-staging.cellow.space`, Production `https://go.cellow.space`) | web |
@@ -48,4 +51,4 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY` | GitHub Actions (GitHub App used by release-please) |
 | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | GitHub Actions environment secrets, `staging` and `production` (Vercel CLI deploys) |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` (Vercel's Protection Bypass for Automation, sent as the `x-vercel-protection-bypass` header) | GitHub Actions `staging` environment (Playwright against `console-staging`, [Vercel](infrastructure.md#vercel)) |
-| `APP_VERSION`, `GIT_SHA` | api (build args, from `version.txt` and the commit) |
+| `APP_VERSION`, `GIT_SHA` | api (build args, from `version.txt` and the commit: `pipeline.yml` in CI, `builder.args` in `config/deploy.yml` for laptop builds; also the Sentry release and `git_sha` tag) |

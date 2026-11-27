@@ -74,7 +74,8 @@ Short codes (`/:code`, `/:code+`) never reach Next.js. They go to Rails on `SHOR
 - **Responsive:** the dashboard table turns into cards below `md`, and charts stack vertically.
 
 ## Errors, loading and empty states
-- Route-level `loading.tsx` skeletons. `error.tsx` boundaries with a "Try again" button that calls `reset()` and refetches.
+- Route-level `loading.tsx` skeletons. `error.tsx` boundaries with a "Try again" button that calls `retry()` and refetches. `app/global-error.tsx` catches errors in the root layout.
+- **Sentry** (`@sentry/nextjs`): `src/instrumentation-client.ts` (browser) and `src/instrumentation.ts` (Node.js and edge, plus `onRequestError` for server errors) share the options in `src/lib/sentry.ts`. Release from `version.txt`, environment from `NEXT_PUBLIC_APP_ENV`, `git_sha` tag; no user, IP, cookies, headers, bodies or query strings; tracing and Session Replay off. Off without `NEXT_PUBLIC_SENTRY_DSN`. `withSentryConfig` in `next.config.ts` uploads source maps during the Vercel build when `SENTRY_AUTH_TOKEN` is set (Production and Preview), deletes the client maps from the deploy, and only warns if the upload fails.
 - `ApiError` → a user-facing message: 422 → field errors, 429 → "Slow down — try again in a minute", 503 on stats → "Analytics temporarily unavailable" with retry.
 - Dashboard empty state: "Create your first link" with the shorten form inline.
 

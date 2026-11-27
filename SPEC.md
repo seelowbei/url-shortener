@@ -39,7 +39,7 @@ Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rail
                                                            └──► Postgres 17 (Kamal accessory, same VM)
 ```
 
-Everything except the VMs runs on free tiers: Vercel Hobby, PostHog Free, Cloudflare DNS Free and GitHub Actions. The paid items are the `cellow.space` domain (yearly renewal) and AWS (two EC2 VMs in Singapore plus an S3 backup bucket). AWS is budgeted at about $20/month, with staging stopped when not in use.
+Everything except the VMs runs on free tiers: Vercel Hobby, PostHog Free, Sentry Developer, UptimeRobot Free, Cloudflare DNS Free, Pulumi Cloud, Tailscale and GitHub Actions. The paid items are the `cellow.space` domain (yearly renewal) and AWS (two EC2 VMs in Singapore plus an S3 backup bucket). AWS is budgeted at about $20/month, with staging stopped when not in use.
 
 Repo layout (monorepo):
 
@@ -99,8 +99,8 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
       Done when: tag `v0.1.0` and its GitHub Release exist, `go.cellow.space/up` reports `0.1.0`, and `console.cellow.space` shows `v0.1.0` in the footer.
    8. **Rollback workflow:** `rollback.yml` (manual run with a tag as input).
       Done when: running it with `v0.1.0` redeploys that image to production and `/up` reports the same commit hash.
-   9. **Monitoring:** UptimeRobot on staging and production `/up`, and Sentry projects for Rails and Next.js, tagged with release and environment.
-      Done when: a test exception shows up in Sentry tagged `0.1.0` / `production`, and stopping staging's Rails container triggers an UptimeRobot alert.
+   9. **Monitoring:** UptimeRobot on production `/up` (staging is stopped most of the time, so it isn't monitored), and Sentry projects for Rails and Next.js, tagged with release, environment and commit, without personal data.
+      Done when: after the next release, a test exception from each app shows up in Sentry tagged with that version / `production`, and a temporary UptimeRobot monitor on staging's `/up` alerts when staging's Rails container is stopped (then the monitor is deleted).
 3. Links model, code generation, `POST /api/links`, redirect
 4. Auth (generator + first-party cookie through the Next.js `/api` rewrite)
 5. Dashboard: list / edit / disable / delete / QR
