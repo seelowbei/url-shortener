@@ -29,9 +29,9 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `aws:profile` (your local AWS CLI profile; the credentials stay in `~/.aws`, never in config) | infra (Pulumi config, local only, not in CI) |
 | `tailscaleAuthKey`, `cloudflare:apiToken` | infra (Pulumi config secrets, committed in `Pulumi.<stack>.yaml` as `secure:` ciphertext that only Pulumi Cloud can decrypt) |
 | `aws:region`, `aws:allowedAccountIds` (the workload account, so Pulumi can't touch any other), `cloudflareZoneId`, `shortHost`, `appHost`, `vercelCname`, `instanceType`, `volumeSizeGb`, `availabilityZoneIndex`, `elasticIp`, `running` | infra (Pulumi config, committed in `Pulumi.<stack>.yaml`) |
-| `sshPublicKey` (deploy key) | infra (Pulumi config) |
+| `sshPublicKey` (deploy key, a separate pair per environment) | infra (Pulumi config) |
 | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | GitHub Actions (Tailscale for deploys) |
-| `KAMAL_SSH_PRIVATE_KEY` | GitHub Actions (deploy user's key) |
+| `KAMAL_SSH_PRIVATE_KEY` | GitHub Actions environment secret (that environment's deploy key) |
 | `RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY` | GitHub Actions (GitHub App used by release-please) |
 | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | GitHub Actions (Vercel CLI deploys) |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` (Vercel's Protection Bypass for Automation, sent as the `x-vercel-protection-bypass` header) | GitHub Actions `staging` environment (Playwright against `console-staging`, [Vercel](infrastructure.md#vercel)) |

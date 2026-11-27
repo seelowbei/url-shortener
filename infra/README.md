@@ -23,7 +23,7 @@ AWS credentials come from an AWS CLI profile on your laptop (`aws configure sso`
 ```bash
 pulumi config set aws:profile <your-aws-cli-profile>
 pulumi config set --secret cloudflare:apiToken <token>
-pulumi config set sshPublicKey "$(cat ~/.ssh/url-shortener-deploy.pub)"
+pulumi config set sshPublicKey "$(cat ~/.ssh/url-shortener-<stack>-deploy.pub)"
 pulumi config set --secret tailscaleAuthKey <tskey-auth-...>
 ```
 
@@ -32,13 +32,15 @@ Creating the `prod` stack (`Pulumi.prod.yaml` already holds its non-secret confi
 ```bash
 pulumi stack init prod
 pulumi config set -s prod --secret cloudflare:apiToken <token>
-pulumi config set -s prod sshPublicKey "$(cat ~/.ssh/url-shortener-deploy.pub)"
+pulumi config set -s prod sshPublicKey "$(cat ~/.ssh/url-shortener-prod-deploy.pub)"
 pulumi config set -s prod --secret tailscaleAuthKey <tskey-auth-...>
 pulumi preview -s prod
 pulumi up -s prod
 ```
 
 Prod's outputs: `publicIp` (the Elastic IP), `shortHost`, `instanceId`, `tailscaleHost` (`url-shortener-prod`) and `bucketName` (`url-shortener-backups-<account-id>`, for the backup accessory). Staging has no `bucketName`, so its preview warns that the undefined output won't show.
+
+Each stack has its own deploy key pair, so staging and prod never share a private key. Staging's is `~/.ssh/url-shortener-deploy` (it predates the naming), prod's is `~/.ssh/url-shortener-prod-deploy`. `~/.ssh/config` maps `url-shortener-prod` to the prod key and every other `url-shortener-*` host to the staging key.
 
 The Tailscale auth key must be single-use, pre-approved, tagged `tag:server` and expire in 1 day. Like the rest of `cloud-init.yaml`, it's only read on the VM's first boot. Changes to `user_data` are ignored afterwards, so a new key or cloud-init edit only applies to a rebuilt VM.
 
