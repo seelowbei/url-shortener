@@ -112,7 +112,7 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
   - Manual run: `kamal accessory exec backup -d production --reuse /usr/local/bin/backup`. Without `--reuse`, Kamal starts a fresh container that has no `aws-cli`.
 - The backup is stored off the VM, so losing the VM or its disk is recoverable.
 - **Restoring a dump:** `aws s3 cp s3://<bucket>/<database>/<timestamp>.dump .` with your SSO profile, then `pg_restore --no-owner --dbname=<database> <file>` into an empty database (`--clean --if-exists` to overwrite an existing one).
-- **Restore drill**, documented in the README: `pulumi up --replace <instance-urn>` (new VM; the Elastic IP moves to it, so DNS doesn't change) → wait for cloud-init → `kamal setup` → `pg_restore` the latest dump → `kamal deploy`. Test it once before calling the deploy done.
+- **Restore drill:** `pulumi up --replace <instance-urn>` (new VM; the Elastic IP moves to it, so DNS doesn't change) → wait for cloud-init → `kamal setup` → `pg_restore` the latest dump → `kamal deploy`. **Not run yet:** steps 2.3 and 2.4 were verified with a local `pg_restore` only. Run it once before production holds real user data (before step 4, auth), then document it in the README.
 
 ### Vercel
 - Next.js on the Hobby plan, one Vercel project from `/web`, with the custom domains `console.cellow.space` (production) and `console-staging.cellow.space` (staging alias). Custom domains are free on Hobby.

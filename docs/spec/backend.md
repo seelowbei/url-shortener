@@ -133,7 +133,7 @@ No session lookup, no cookies, no cache in front of the lookup (Solid Cache is a
 - UA parsing (`browser` gem) → `$browser`, `$os`, `$device_type` sent as PostHog properties.
 
 ## Observability
-- **Logs:** JSON to stdout, one line per request (`request_id`, method, path, status, duration_ms, `link_code` when present, `user_id` when signed in). IPs aren't logged. Read them with `kamal app logs -d production`.
+- **Logs:** JSON to stdout, one line per request (`request_id`, method, path, status, duration_ms, `link_code` when present, `user_id` when signed in). IPs aren't logged. Read them with `kamal app logs -d production`. **Not built yet:** for now Rails writes its default text lines tagged with the request id (`config/environments/production.rb`); the JSON request log comes with the link endpoints (step 3), when `link_code` exists.
 - **Sentry** (free Developer plan; `sentry-ruby` + `sentry-rails`, `config/initializers/sentry.rb`), one project per app:
   - `release: APP_VERSION` (the same name in staging and production, since one image runs in both), `environment: APP_ENV`, and a `git_sha` tag. Between releases `version.txt` holds the last released version, so staging events carry that version; the `git_sha` tag tells builds apart.
   - Off when `SENTRY_DSN` is unset (dev, test, or a deploy whose environment lacks it), so a deploy never depends on Sentry.
