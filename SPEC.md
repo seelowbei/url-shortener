@@ -2,7 +2,7 @@
 
 Portfolio project: a Bitly-style URL shortener.
 
-- **API + redirects:** Rails 8 (API mode), Postgres, Solid Queue, Solid Cache, Alba, pagy, Faraday
+- **API + redirects:** Rails 8.1 (API mode), Postgres, Solid Queue, Solid Cache, Alba, pagy, Faraday
 - **Error tracking:** Sentry (free plan), for both Rails and Next.js
 - **Frontend:** Next.js (App Router), TanStack Query, Tailwind v4, shadcn/ui (charts on Recharts), typed client generated from the API's OpenAPI spec
 - **Analytics:** PostHog (server-side event capture + HogQL Query API)
@@ -31,7 +31,7 @@ Portfolio project: a Bitly-style URL shortener.
 Browser ──► Next.js on Vercel (console.cellow.space)
               │  /api/* rewritten (proxied) ──────────────┐
               ▼                                           ▼
-Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rails 8 API (AWS EC2 t4g, Docker)
+Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rails 8.1 API (AWS EC2 t4g, Docker)
                                                            │   302 + enqueue ClickJob
                                          Solid Queue ──────┼──► PostHog capture (link_clicked)
                                          Stats request ────┼──► PostHog Query API (HogQL), cached 60s
@@ -39,15 +39,15 @@ Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rail
                                                            └──► Postgres 17 (Kamal accessory, same VM)
 ```
 
-Everything except the VMs runs on free tiers: Vercel Hobby, PostHog Free, Cloudflare DNS Free and GitHub Actions. The paid items are the `cellow.space` domain (yearly renewal) and AWS (two EC2 VMs in Singapore plus an S3 backup bucket). AWS is budgeted at about $20/month, with staging stopped when not in use.
+Everything except the VMs runs on free tiers: Vercel Hobby, PostHog Free, Sentry Developer, UptimeRobot Free, Cloudflare DNS Free, Pulumi Cloud, Tailscale and GitHub Actions. The paid items are the `cellow.space` domain (yearly renewal) and AWS (two EC2 VMs in Singapore plus an S3 backup bucket). AWS is budgeted at about $20/month, with staging stopped when not in use.
 
 Repo layout (monorepo):
 
 ```
-/api     Rails 8 app (+ Kamal config)
+/api     Rails 8.1 app (+ Kamal config)
 /web     Next.js app
 /infra   Pulumi (TypeScript) — AWS infrastructure and Cloudflare DNS
-/.github/workflows/{ci,pipeline,rollback}.yml
+/.github/workflows/{ci,pr-title,pipeline,rollback}.yml
 release-please-config.json, .release-please-manifest.json, version.txt, CHANGELOG.md
 ```
 
@@ -59,7 +59,7 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
    1. **Repo:** `git init`, the monorepo layout, `.gitignore`, README stub, push to GitHub. Protect `main` (squash only, no direct pushes).
       Done when: the repo is on GitHub and a direct push to `main` is rejected.
    2. **Rails skeleton:** `rails new api --api --database=postgresql`, RSpec, RuboCop, `docker compose up db` for dev, `GET /up`, and `GET /api/health` returning `{version, sha}`.
-      Done when: `bin/rails spec` passes locally, and `docker build --platform linux/arm64` succeeds.
+      Done when: `bin/rspec` passes locally, and `docker build --platform linux/arm64` succeeds.
    3. **Next.js skeleton:** `create-next-app` (TypeScript, App Router, pnpm), Tailwind v4, shadcn init, ESLint + Prettier, Vitest. A hello page calls `/api/health` through the rewrite.
       Done when: the page shows the API version with both apps running locally.
    4. **CI:** `ci.yml` with `api` (rubocop, rspec) and `web` (lint, typecheck, vitest, build) jobs, plus the Conventional Commits PR-title check, all required on `main`.
@@ -71,7 +71,7 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
       - the `cellow.space` domain on Cloudflare DNS (nameservers pointed at Cloudflare), plus a Cloudflare API token that can only edit that zone's DNS
       - a Vercel project linked to `/web`, with `console.cellow.space` and `console-staging.cellow.space` added as domains (`console-staging` is a Preview domain on the `staging` branch; see [Vercel](docs/spec/infrastructure.md#vercel))
       - the release-please GitHub App, its ID and private key stored as repo secrets
-      Done when: every account above exists and its values have a home: GitHub `staging` environment or repo secrets, or saved for the Pulumi config in step 6. Generated deploy secrets come in steps 6 and 7. Keys for later features (PostHog, Safe Browsing, Sentry, Mission Control, `INTERNAL_TOKEN`) come in the build steps that use them.
+      Done when: every account above exists and its values have a home: GitHub `staging` environment or repo secrets, or saved for the Pulumi config in step 6. Generated deploy secrets come in steps 6 and 7. Keys for later features (PostHog, Safe Browsing, Sentry, Mission Control) come in the build steps that use them.
    6. **Pulumi `staging` stack:** VPC, security group (80/443 only), instance role, `t4g.micro` VM with cloud-init, Cloudflare DNS records, and the `running` flag that stops and starts it. A new deploy SSH key pair: the public key goes in the stack config, the private key in the GitHub `staging` secret `KAMAL_SSH_PRIVATE_KEY`.
       Done when: `ssh deploy@url-shortener-staging` works over Tailscale, `docker ps` runs, and `go-staging.cellow.space` resolves to the VM.
    7. **First Kamal deploy from your laptop:** `deploy.yml` + the `staging` destination, Postgres accessory, Let's Encrypt TLS. `POSTGRES_PASSWORD`, `SECRET_KEY_BASE` (a different value per environment; there's no Rails master key) and a GHCR token (`KAMAL_REGISTRY_PASSWORD`) are generated here, referenced from `.kamal/secrets.staging`, and stored in the GitHub `staging` environment.
@@ -99,8 +99,8 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
       Done when: tag `v0.1.0` and its GitHub Release exist, `go.cellow.space/up` reports `0.1.0`, and `console.cellow.space` shows `v0.1.0` in the footer.
    8. **Rollback workflow:** `rollback.yml` (manual run with a tag as input).
       Done when: running it with `v0.1.0` redeploys that image to production and `/up` reports the same commit hash.
-   9. **Monitoring:** UptimeRobot on staging and production `/up`, and Sentry projects for Rails and Next.js, tagged with release and environment.
-      Done when: a test exception shows up in Sentry tagged `0.1.0` / `production`, and stopping staging's Rails container triggers an UptimeRobot alert.
+   9. **Monitoring:** UptimeRobot on production `/up` (staging is stopped most of the time, so it isn't monitored), and Sentry projects for Rails and Next.js, tagged with release, environment and commit, without personal data.
+      Done when: after the next release, a test exception from each app shows up in Sentry tagged with that version / `production`, and a temporary UptimeRobot monitor on staging's `/up` alerts when staging's Rails container is stopped (then the monitor is deleted).
 3. Links model, code generation, `POST /api/links`, redirect
 4. Auth (generator + first-party cookie through the Next.js `/api` rewrite)
 5. Dashboard: list / edit / disable / delete / QR

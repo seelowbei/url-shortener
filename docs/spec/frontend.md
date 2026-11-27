@@ -19,7 +19,7 @@
 stats/[code]/page.tsx         Public stats
 stats/[code]/opengraph-image.tsx   Open Graph image for the public stats page
 not-found.tsx, error.tsx, loading.tsx (+ per-route loading.tsx skeletons)
-middleware.ts
+proxy.ts
 ```
 Short codes (`/:code`, `/:code+`) never reach Next.js. They go to Rails on `SHORT_HOST`.
 
@@ -49,7 +49,7 @@ Short codes (`/:code`, `/:code+`) never reach Next.js. They go to Rails on `SHOR
 - **Global handling of 401:** a QueryClient `onError` clears the `me` query and sends the user to `/login?next=<current path>`.
 
 ## Auth in the frontend
-- `middleware.ts` matches only the `(app)` routes. If the session cookie is missing, it redirects to `/login?next=…`. This check is just for speed: Rails is the authority, and the 401 handling above catches expired sessions.
+- `proxy.ts` (Next.js 16's name for middleware) matches only the `(app)` routes. If the session cookie is missing, it redirects to `/login?next=…`. This check is just for speed: Rails is the authority, and the 401 handling above catches expired sessions.
 - `(app)/layout.tsx` loads `useMe` and shows a skeleton until it has loaded.
 - "Try the demo" calls `POST /api/session` with the demo credentials ([demo seed](product.md#demo-seed)).
 - `?next=` only accepts same-origin relative paths, to prevent open redirects.
@@ -74,7 +74,8 @@ Short codes (`/:code`, `/:code+`) never reach Next.js. They go to Rails on `SHOR
 - **Responsive:** the dashboard table turns into cards below `md`, and charts stack vertically.
 
 ## Errors, loading and empty states
-- Route-level `loading.tsx` skeletons. `error.tsx` boundaries with a "Try again" button that calls `reset()` and refetches.
+- Route-level `loading.tsx` skeletons. `error.tsx` boundaries with a "Try again" button that calls `retry()` and refetches. `app/global-error.tsx` catches errors in the root layout.
+- **Sentry** (`@sentry/nextjs`): `src/instrumentation-client.ts` (browser) and `src/instrumentation.ts` (Node.js and edge, plus `onRequestError` for server errors) share the options in `src/lib/sentry.ts`. Release from `version.txt`, environment from `NEXT_PUBLIC_APP_ENV`, `git_sha` tag; no user, IP, cookies, headers, bodies or query strings; tracing and Session Replay off. Off without `NEXT_PUBLIC_SENTRY_DSN`. `withSentryConfig` in `next.config.ts` uploads source maps during the Vercel build when `SENTRY_AUTH_TOKEN` is set (Production and Preview), deletes the client maps from the deploy, and only warns if the upload fails.
 - `ApiError` → a user-facing message: 422 → field errors, 429 → "Slow down — try again in a minute", 503 on stats → "Analytics temporarily unavailable" with retry.
 - Dashboard empty state: "Create your first link" with the shorten form inline.
 
