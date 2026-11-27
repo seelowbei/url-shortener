@@ -170,6 +170,10 @@ jobs:
           }
           check https://go-staging.cellow.space/up
           check https://console-staging.cellow.space/api/health -H "x-vercel-protection-bypass: $BYPASS"
+          # The footer shows the web app's own version, inlined from version.txt at build time.
+          version=$(tr -d '[:space:]' < version.txt)
+          html=$(curl -fsS --max-time 10 -H "x-vercel-protection-bypass: $BYPASS" https://console-staging.cellow.space/)
+          grep -qF "v$version" <<< "$html" || { echo "::error::console-staging footer does not show v$version"; exit 1; }
 
   # Opens or updates the release PR (`chore(main): release X.Y.Z`). When this push is the merged
   # release PR, it tags vX.Y.Z and creates the GitHub Release instead.
@@ -318,3 +322,6 @@ jobs:
           }
           check https://go.cellow.space/up
           check https://console.cellow.space/api/health
+          # The footer shows the web app's own version, inlined from version.txt at build time.
+          html=$(curl -fsS --max-time 10 https://console.cellow.space/)
+          grep -qF "v$VERSION" <<< "$html" || { echo "::error::console.cellow.space footer does not show v$VERSION"; exit 1; }
