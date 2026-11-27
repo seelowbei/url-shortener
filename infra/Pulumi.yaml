@@ -21,6 +21,10 @@ config:
     type: boolean
     default: false
     description: Give the VM a fixed Elastic IP (prod). Without it the public IP changes on every start (staging)
+  backups:
+    type: boolean
+    default: false
+    description: Create the S3 backup bucket url-shortener-backups-<account-id> and let the instance role put/list/get in it (prod only; one per AWS account)
   running:
     type: boolean
     default: true
