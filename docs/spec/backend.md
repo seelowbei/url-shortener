@@ -81,7 +81,8 @@ namespace :api do
   end
   get "public/links/:code/stats", to: "public_stats#show"
 end
-get "up", to: "rails/health#show"
+get "up", to: "health#show"                 # {status, version, sha}; 503 if the database is down
+get "api/health", to: "health#show"         # the same, reachable through the Next.js /api rewrite
 mount MissionControl::Jobs::Engine, at: "/jobs"
 mount Rswag::Ui::Engine, at: "/api/docs" if AppConfig.api_docs_enabled  # dev + staging
 
@@ -142,5 +143,5 @@ No session lookup, no cookies, no cache in front of the lookup (Solid Cache is a
 - **Uptime:** UptimeRobot (free plan, 5-minute checks, email alerts) runs an HTTP(s) monitor on `https://go.cellow.space/up`, which returns 503 when the database is unreachable. Staging isn't monitored: it's stopped most of the time on purpose, so it would alert on every stop.
 
 ## Gems
-`rails ~> 8.x`, `pg`, `puma`, `solid_queue`, `solid_cache`, `mission_control-jobs`, `bcrypt`, `alba`, `pagy`, `faraday`, `posthog-ruby`, `browser`, `rqrcode`, `sentry-ruby`, `sentry-rails`, `bootsnap`, `kamal`, `thruster` (optional; kamal-proxy already terminates TLS).
+`rails ~> 8.1`, `pg`, `puma`, `solid_queue`, `solid_cache`, `mission_control-jobs`, `bcrypt`, `alba`, `pagy`, `faraday`, `posthog-ruby`, `browser`, `rqrcode`, `sentry-ruby`, `sentry-rails`, `bootsnap`, `kamal`, `thruster` (optional; kamal-proxy already terminates TLS).
 Dev/test: `rspec-rails`, `rswag`, `factory_bot_rails`, `shoulda-matchers`, `webmock`, `rubocop-rails-omakase`, `brakeman`, `bundler-audit`.

@@ -2,7 +2,7 @@
 
 Portfolio project: a Bitly-style URL shortener.
 
-- **API + redirects:** Rails 8 (API mode), Postgres, Solid Queue, Solid Cache, Alba, pagy, Faraday
+- **API + redirects:** Rails 8.1 (API mode), Postgres, Solid Queue, Solid Cache, Alba, pagy, Faraday
 - **Error tracking:** Sentry (free plan), for both Rails and Next.js
 - **Frontend:** Next.js (App Router), TanStack Query, Tailwind v4, shadcn/ui (charts on Recharts), typed client generated from the API's OpenAPI spec
 - **Analytics:** PostHog (server-side event capture + HogQL Query API)
@@ -31,7 +31,7 @@ Portfolio project: a Bitly-style URL shortener.
 Browser ──► Next.js on Vercel (console.cellow.space)
               │  /api/* rewritten (proxied) ──────────────┐
               ▼                                           ▼
-Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rails 8 API (AWS EC2 t4g, Docker)
+Visitor ──► GET go.cellow.space/:code ──► kamal-proxy ──► Rails 8.1 API (AWS EC2 t4g, Docker)
                                                            │   302 + enqueue ClickJob
                                          Solid Queue ──────┼──► PostHog capture (link_clicked)
                                          Stats request ────┼──► PostHog Query API (HogQL), cached 60s
@@ -44,10 +44,10 @@ Everything except the VMs runs on free tiers: Vercel Hobby, PostHog Free, Sentry
 Repo layout (monorepo):
 
 ```
-/api     Rails 8 app (+ Kamal config)
+/api     Rails 8.1 app (+ Kamal config)
 /web     Next.js app
 /infra   Pulumi (TypeScript) — AWS infrastructure and Cloudflare DNS
-/.github/workflows/{ci,pipeline,rollback}.yml
+/.github/workflows/{ci,pr-title,pipeline,rollback}.yml
 release-please-config.json, .release-please-manifest.json, version.txt, CHANGELOG.md
 ```
 
@@ -59,7 +59,7 @@ Rails serves the short domain directly, so redirects never go through Next.js. T
    1. **Repo:** `git init`, the monorepo layout, `.gitignore`, README stub, push to GitHub. Protect `main` (squash only, no direct pushes).
       Done when: the repo is on GitHub and a direct push to `main` is rejected.
    2. **Rails skeleton:** `rails new api --api --database=postgresql`, RSpec, RuboCop, `docker compose up db` for dev, `GET /up`, and `GET /api/health` returning `{version, sha}`.
-      Done when: `bin/rails spec` passes locally, and `docker build --platform linux/arm64` succeeds.
+      Done when: `bin/rspec` passes locally, and `docker build --platform linux/arm64` succeeds.
    3. **Next.js skeleton:** `create-next-app` (TypeScript, App Router, pnpm), Tailwind v4, shadcn init, ESLint + Prettier, Vitest. A hello page calls `/api/health` through the rewrite.
       Done when: the page shows the API version with both apps running locally.
    4. **CI:** `ci.yml` with `api` (rubocop, rspec) and `web` (lint, typecheck, vitest, build) jobs, plus the Conventional Commits PR-title check, all required on `main`.

@@ -32,7 +32,7 @@
 | Analytics | `ANALYTICS_ADAPTER=fake` (PostHog optional) | PostHog, staging project | PostHog, prod project |
 | Data | Seeds | Seeds + backfill, reset any time | Seeds + backfill (demo account), never reset |
 | Backups | – | – | Nightly to S3 |
-| Deployed by | – | Every merge to `main` while it's running, or a manual pipeline run | A published GitHub Release |
+| Deployed by | – | Every merge to `main` while it's running, or a manual pipeline run | A merged release PR: release-please tags it, then the production job deploys after your approval |
 
 - **Staging runs `RAILS_ENV=production`**, so it tests exactly the prod configuration. Only env vars differ. An `APP_ENV=staging|production` variable is used for labels (a "STAGING" banner in the UI) and as the PostHog `environment` property.
 - **PostHog:** one project per environment if your plan allows it. Otherwise one project, with every event carrying an `environment` property and every HogQL query filtering on it.
@@ -48,7 +48,7 @@
 ### Versioning (release-please)
 - **One version for the whole product** (API + web ship together). Root-level release-please config:
   - `release-please-config.json`: one package at `.`, `release-type: simple`, `bump-minor-pre-major: true` (while on 0.x, `feat` bumps minor and breaking changes bump minor), `initial-version: "0.1.0"`, changelog sections for Features / Bug Fixes / Performance. Top-level `always-update: true`: by default release-please only refreshes the release PR when its release notes change, so a `ci:`/`docs:`/`chore:` merge would leave it behind `main`, and branch protection requires PRs to be up to date. With it, every pipeline run rebuilds the release PR on the latest `main`, which also re-runs its CI.
-  - `.release-please-manifest.json`: `{ ".": "0.0.0" }`. With no earlier release tag, release-please ignores this version and proposes `initial-version` (default `1.0.0`), so `initial-version` is what makes the first release PR `0.1.0`.
+  - `.release-please-manifest.json`: the last released version, started at `{ ".": "0.0.0" }` and updated by each release PR. With no earlier release tag, release-please ignored that starting version and proposed `initial-version` (default `1.0.0`), so `initial-version` is what made the first release PR `0.1.0`.
   - `version.txt` (bumped by release-please) and `CHANGELOG.md` (generated).
 - The version is passed into the image as a build arg (`APP_VERSION`, along with `GIT_SHA`). `GET /up` returns `{version, sha}`, and the web footer shows the version (`web/next.config.ts` inlines `version.txt` as `NEXT_PUBLIC_APP_VERSION` at build time), so you can always tell what's running where.
 - **release-please needs a GitHub App token:** a GitHub App created for the repo (`actions/create-github-app-token`), not `GITHUB_TOKEN`. PRs created with `GITHUB_TOKEN` don't trigger workflows, so CI wouldn't run on the release PR and branch protection would block merging it.
