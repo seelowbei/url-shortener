@@ -36,7 +36,8 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `MISSION_CONTROL_USER`, `MISSION_CONTROL_PASSWORD` | api (HTTP basic auth for `/jobs`) |
 | `ALLOWED_ORIGINS` (comma-separated; staging adds the Vercel preview pattern) | api (Origin check, [API](api.md#api-endpoints)) |
 | `API_ORIGIN` (server-side only, used by rewrites and server-side fetches; Vercel Preview `https://go-staging.cellow.space`, Production `https://go.cellow.space`) | web |
-| `NEXT_PUBLIC_APP_ENV` (`development`/`staging`/`production`), `NEXT_PUBLIC_APP_VERSION` | web |
+| `NEXT_PUBLIC_APP_ENV` (`development`/`staging`/`production`) | web |
+| `NEXT_PUBLIC_APP_VERSION` (not a Vercel env var: `web/next.config.ts` reads the repo-root `version.txt` at build time, which needs the Vercel project's "Include files outside the root directory in the Build Step" left on; an explicit env var overrides it) | web (footer) |
 | `NEXT_PUBLIC_SHORT_HOST` (display only, e.g. the domain hint in the alias input) | web |
 | `aws:profile` (your local AWS CLI profile; the credentials stay in `~/.aws`, never in config) | infra (Pulumi config, local only, not in CI) |
 | `tailscaleAuthKey`, `cloudflare:apiToken` | infra (Pulumi config secrets, committed in `Pulumi.<stack>.yaml` as `secure:` ciphertext that only Pulumi Cloud can decrypt) |
@@ -47,4 +48,4 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 | `RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY` | GitHub Actions (GitHub App used by release-please) |
 | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | GitHub Actions environment secrets, `staging` and `production` (Vercel CLI deploys) |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` (Vercel's Protection Bypass for Automation, sent as the `x-vercel-protection-bypass` header) | GitHub Actions `staging` environment (Playwright against `console-staging`, [Vercel](infrastructure.md#vercel)) |
-| `APP_VERSION`, `GIT_SHA` | api + web (build args, from `version.txt` and the commit) |
+| `APP_VERSION`, `GIT_SHA` | api (build args, from `version.txt` and the commit) |
