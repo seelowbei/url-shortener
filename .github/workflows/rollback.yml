@@ -162,6 +162,8 @@ jobs:
 
       # Both the API and the web app (through the /api rewrite) must report the release's commit
       # and version. console.cellow.space is public, so no bypass header.
+      # Unlike the production job, no footer check: releases before v0.2.0 have no version footer,
+      # and the previous step already checked that console.cellow.space serves the release's deployment.
       - name: Smoke test
         run: |
           check() {
