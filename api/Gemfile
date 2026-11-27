@@ -26,6 +26,10 @@ gem "kamal", require: false
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem "thruster", require: false
 
+# Error tracking (docs/spec/backend.md#observability). Off when SENTRY_DSN is unset.
+gem "sentry-ruby", "~> 7.3"
+gem "sentry-rails", "~> 7.3"
+
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"
 
