@@ -1,0 +1,28 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Redirect",
+      "warning_code": 18,
+      "fingerprint": "da2bb6e551c2ae8543cf238326406332e1098bcbff22a246d777ce682550c8fd",
+      "check_name": "Redirect",
+      "message": "Possible unprotected redirect",
+      "file": "app/controllers/redirects_controller.rb",
+      "line": 16,
+      "link": "https://brakemanscanner.org/docs/warning_types/redirect/",
+      "code": "redirect_to(Link.live.select(:id, :code, :destination_url, :disabled_at, :flagged_at).find_by(:code => params[:code]).destination_url, :status => :found, :allow_other_host => true)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RedirectsController",
+        "method": "show"
+      },
+      "user_input": "Link.live.select(:id, :code, :destination_url, :disabled_at, :flagged_at).find_by(:code => params[:code]).destination_url",
+      "confidence": "Weak",
+      "cwe_id": [
+        601
+      ],
+      "note": "Redirecting to the stored destination is the product. destination_url is validated as an http(s) URL with a host (not the short host) when the link is created."
+    }
+  ],
+  "brakeman_version": "8.1.1"
+}
