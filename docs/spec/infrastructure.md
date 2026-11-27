@@ -105,7 +105,13 @@ Created by Pulumi ([infrastructure](#infrastructure-pulumi)). Operational notes:
 
 ### Backups
 - A `backup` Kamal accessory (small cron container) runs `pg_dump -Fc` nightly for each database and uploads to the **S3 backup bucket**, keeping 14 days (bucket lifecycle rule). It authenticates with the instance role through IMDSv2, so there are no long-lived access keys.
+  - **Prod only**, in `config/deploy.production.yml`. Image: the official `postgres:17.<minor>-alpine<version>` (pinned), so `pg_dump` matches the server's major version. Bump it with the `db` accessory's major.
+  - Its command is `.kamal/backup/entrypoint.sh`, mounted with Kamal `files:`. The script installs `aws-cli` from the image's Alpine package repository at container start, installs the crontab and runs busybox `crond` in the foreground.
+  - The job, `.kamal/backup/backup.sh`, runs at **19:00 UTC (03:00 Singapore)**. It dumps each database in `BACKUP_DATABASES` (primary, cache, queue) to `s3://<bucket>/<database>/<UTC timestamp>.dump` and logs one line per database to the container log (`kamal accessory logs backup -d production`). A failed dump or upload stops the run with a non-zero exit.
+  - It reaches the `db` accessory as `url-shortener-db` on the Kamal network, with `POSTGRES_PASSWORD` from the destination secrets. The AWS CLI gets the role's credentials from IMDSv2, which the hop limit of 2 makes reachable from containers.
+  - Manual run: `kamal accessory exec backup -d production --reuse /usr/local/bin/backup`. Without `--reuse`, Kamal starts a fresh container that has no `aws-cli`.
 - The backup is stored off the VM, so losing the VM or its disk is recoverable.
+- **Restoring a dump:** `aws s3 cp s3://<bucket>/<database>/<timestamp>.dump .` with your SSO profile, then `pg_restore --no-owner --dbname=<database> <file>` into an empty database (`--clean --if-exists` to overwrite an existing one).
 - **Restore drill**, documented in the README: `pulumi up --replace <instance-urn>` (new VM; the Elastic IP moves to it, so DNS doesn't change) → wait for cloud-init → `kamal setup` → `pg_restore` the latest dump → `kamal deploy`. Test it once before calling the deploy done.
 
 ### Vercel

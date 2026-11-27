@@ -21,7 +21,8 @@ Values differ per environment ([environments and release flow](delivery.md#envir
 |---|---|
 | `DATABASE_URL` (`postgres://…@url-shortener-db:5432/…`, Docker network only) | api |
 | `POSTGRES_PASSWORD` | api (Kamal secret, shared by the accessory and the app) |
-| `BACKUP_BUCKET` (the prod stack's `bucketName` output, `url-shortener-backups-<account-id>`; no access keys, the instance role signs requests) | backup container (prod only) |
+| `BACKUP_BUCKET` (the prod stack's `bucketName` output, `url-shortener-backups-<account-id>`; no access keys, the instance role signs requests) | backup container (prod only, clear value in `config/deploy.production.yml`) |
+| `BACKUP_DATABASES` (space-separated databases to dump), `AWS_REGION` (`ap-southeast-1`), `PGHOST` (`url-shortener-db`), `PGUSER` (`url_shortener`), plus the `POSTGRES_PASSWORD` secret | backup container (prod only, [backups](infrastructure.md#backups)) |
 | `SHORT_HOST` (`go.cellow.space`; staging `go-staging.cellow.space`), `APP_ORIGIN` (`https://console.cellow.space`; staging `https://console-staging.cellow.space`) | api |
 | `SECRET_KEY_BASE` (different per environment, from `bin/rails secret`; signs cookies and seeds the visitor-hash salt) | api (Kamal secret, GitHub environment secret) |
 | `KAMAL_REGISTRY_PASSWORD` (GHCR token, `write:packages`, one per environment) | api (Kamal secret, GitHub environment secret) |
