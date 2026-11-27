@@ -1,0 +1,125 @@
+---
+openapi: 3.0.3
+info:
+  title: URL shortener API
+  version: v1
+servers:
+- url: "/"
+paths:
+  "/api/links":
+    post:
+      summary: Shorten a URL
+      tags:
+      - Links
+      operationId: createLink
+      description: Anonymous for now. Rate limited to 10 creates a minute per client.
+        State-changing requests must send an allowed Origin header.
+      parameters:
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Set by the browser; must be in ALLOWED_ORIGINS, or the request
+          gets 403
+      responses:
+        '201':
+          description: link created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Link"
+        '422':
+          description: invalid URL or alias (validation_failed), or alias taken (alias_taken)
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          description: missing link parameter
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '403':
+          description: Origin not allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '429':
+          description: rate limited
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/LinkCreate"
+        required: true
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          - fields
+          properties:
+            code:
+              type: string
+              description: Stable machine-readable code
+            message:
+              type: string
+            fields:
+              type: object
+              nullable: true
+              description: Validation messages per request field
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+    Link:
+      type: object
+      required:
+      - code
+      - short_url
+      - destination_url
+      properties:
+        code:
+          type: string
+          example: aZ3kP9q
+        short_url:
+          type: string
+          format: uri
+          example: https://go.cellow.space/aZ3kP9q
+        destination_url:
+          type: string
+          format: uri
+          example: https://example.com/a/long/path
+    LinkCreate:
+      type: object
+      required:
+      - link
+      properties:
+        link:
+          type: object
+          required:
+          - url
+          properties:
+            url:
+              type: string
+              maxLength: 2048
+              example: https://example.com/a/long/path
+            alias:
+              type: string
+              pattern: "^[A-Za-z0-9_-]{3,30}$"
+              description: Optional custom code, case-insensitively unique and not
+                reserved
